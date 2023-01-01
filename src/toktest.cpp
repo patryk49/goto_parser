@@ -33,6 +33,7 @@ constexpr const char *token_names[] = {
 	"Pointer", "BitNot",
 	"Span", "View",
 	"Minus", "LogicNot",
+	"UnresolvedValue",
 	"ArrayType",
 
 // POSTFIX OPERATIONS
@@ -157,9 +158,19 @@ int main(){
 			}
 			break;
 		case Node::Identifier:
-			printf(": ");
-			for (size_t i=0; i!=*(uint8_t *)names[it.index]; i+=1)
-				putchar(names[it.index][1+i]);
+		case Node::Variable:
+		case Node::Constant:
+		case Node::Colon:
+		case Node::DoubleColon:
+		case Node::TripleColon:
+		case Node::UnresolvedValue:
+			if (it.index == UINT16_MAX){ 
+				printf(": ---");
+			} else{
+				printf(": ");
+				for (size_t i=0; i!=*(uint8_t *)names[it.index]; i+=1)
+					putchar(names[it.index][1+i]);
+			}
 			break;
 		case Node::GetField:
 		case Node::Trait:
@@ -187,7 +198,6 @@ int main(){
 		}
 		putchar('\n');
 	}
-
 
 	return 0;
 }

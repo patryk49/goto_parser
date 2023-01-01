@@ -12,17 +12,18 @@ uint8_t precs_curr[] = {
 	72, 72,                 // Pointer, BitNot,
 	72, 72,                 // Span, View,
 	72, 72,                 // Minus, LogicNot,
+	72,                     // UnresolvedValue,
 	72,                     // ArrayType,
 
 // POSTFIX
-	68,                     // Dereference,
-	82,                     // GetField,
-	80,                     // GetFiledIndexed,
-	80, 80,                 // Call, BroadcastCall, 
+	84,                     // Dereference,
+	84,                     // GetField,
+	84,                     // GetFiledIndexed,
+	84, 84,                 // Call, BroadcastCall, 
 	80,                     // Initialize
-	80, 80,                 // GetProcedure, IndexAccess,
+	84, 84,                 // GetProcedure, IndexAccess,
 	32,                     // Conditional,
-	82,                     // GetTrait,
+	84,                     // GetTrait,
 
 // SEPARATORS
 	20,  9,                 // Comma, Terminator
@@ -71,17 +72,18 @@ uint8_t precs_stack[] = {
 	82, 82,                 // Pointer, BitNot,
 	82, 82,                 // Span, View,
 	82, 82,                 // Minus, LogicNot,
+	82,                     // UnresolvedValue,
 	82,                     // ArrayType,
 
 // POSTFIX
-	82,                     // Dereference,
-	82,                     // GetField,
+	84,                     // Dereference,
+	84,                     // GetField,
 	 0,                     // GetFiledIndexed,
 	 0,  0,                 // Call, BroadcastCall, 
 	 0,                     // Initialize
 	 0,  0,                 // GetProcedure, IndexAccess,
 	 0,                     // Conditional,
-	82,                     // GetTrait,
+	84,                     // GetTrait,
 
 // SEPARATORS
 	20,  8,                 // Comma, Terminator
@@ -201,6 +203,7 @@ ParseResult parse(Span<Node> tokens) noexcept{
 		case Node::View:
 		case Node::LogicNot:
 		case Node::Const:
+		case Node::UnresolvedValue:
 		case Node::ArrayType:
 		SimplePrefixOperator:
 			push_value(opers, curr);
@@ -264,11 +267,14 @@ ParseResult parse(Span<Node> tokens) noexcept{
 
 			switch (curr.type){
 			case Node::Initialize:
+			case Node::Span:
 			case Node::Dereference:
 			case Node::GetField:
 			case Node::Trait:
 			SimplePostfixOperator:
-				push_value(opers, curr);
+				*res_it = curr;
+				res_it += 1;
+			//	push_value(opers, curr);
 				goto ExpectOperator;
 			
 			case Node::Comma:
@@ -400,3 +406,47 @@ Return:
 	return ParseResult{Span{tokens.ptr, res_it-tokens.ptr}, error};
 #undef ERROR_RETURN
 }
+
+
+
+struct GloabalIdentifier{
+	enum Type{
+		Procedure, Struct,
+		Variable, Condition,
+	};
+
+	struct ProcedureData{
+		FiniteArray<Node *, 16> args;
+		Node *return_val;
+		
+		Node *body;
+	};
+	
+	struct StructData{
+		FiniteArray<Node *, 16> args;
+		Node *return_val;
+		
+		Node *body;
+	};
+
+	struct ConditionData{
+		Node *expr;
+	};
+
+	struct VariableData{
+		Node *expression;
+		Node *data_class;
+		bool is_const;
+	};
+	
+// DATA MEMBERS
+	Type type;
+	uint16_t name_index;
+
+	union{
+		ProcedureData procedure;
+		StructData structure;
+		ConditionData condition;
+		VariableData variable;
+	};
+};

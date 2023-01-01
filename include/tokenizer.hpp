@@ -65,10 +65,11 @@ struct Node{
 	// OPENING SYMBOLS
 		OpenPar, OpenBracket, OpenBrace, OpenScope, OpenArrayType,
 		
-	// PREFIX OPERATIONS
+	// PREFIX OPERATNS
 		Pointer, BitNot,
 		Span, View,
 		Minus, LogicNot,
+		UnresolvedValue,
 		ArrayType,
 	
 	// POSTFIX OPERATIONS
@@ -682,14 +683,16 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 				curr.type = Node::Conditional;
 				curr.index = UINT16_MAX;
 			} else{
-				curr.type = Node::UnresolvedType;
 				curr.index = add_name(text, res.names, al);
+				curr.type = Node::UnresolvedType;
 			}
 			goto AddToken;
 		}
 
 
-		case ':':
+		case ':':{
+			Node *prev = &res.tokens[res.tokens.size-1];
+
 			input += 1;
 			if (*input == ':'){
 				curr.type = Node::DoubleColon;
@@ -704,10 +707,21 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 			} else if (*input == '='){
 				curr.type = Node::Variable;
 				input += 1;
-			} else {
+			} else{
+				if (prev->type == Node::UnresolvedType){
+					prev->type = Node::UnresolvedValue;
+					goto Break;
+				}
 				curr.type = Node::Colon;
 			}
+
+			if (prev->type == Node::Identifier){
+				prev->type = curr.type;
+				goto Break;
+			}
+			curr.index = UINT16_MAX;
 			goto AddToken;
+		}
 		
 
 		case ',': input += 1;

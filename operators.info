@@ -42,6 +42,14 @@ PREFIX OPERATORS:
 
 
 
+precedence:
+v[I] == v.[I] == v(A) == v.(A) == v.F == v.#T == v' >
+*v == ^v== []v == <>v == [:N]v >
+T~v == T~%~v
+
+
+
+
 POSTFIX OPERATORS:
 .field     .[index]   .[#-index]                         field access, indexed field access, reverse indexed field access
 (args)     .(args)                                       call, get procedure
