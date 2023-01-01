@@ -163,6 +163,7 @@ int main(){
 		case Node::Colon:
 		case Node::DoubleColon:
 		case Node::TripleColon:
+		case Node::UnresolvedType:
 		case Node::UnresolvedValue:
 			if (it.index == UINT16_MAX){ 
 				printf(": ---");
@@ -174,9 +175,13 @@ int main(){
 			break;
 		case Node::GetField:
 		case Node::Trait:
-			printf(": ");
-			for (size_t i=0; i!=*(uint8_t *)foreign_names[it.index]; i+=1)
-				putchar(foreign_names[it.index][1+i]);
+			if (it.index == UINT16_MAX){ 
+				printf(": ---");
+			} else{
+				printf(": ");
+				for (size_t i=0; i!=*(uint8_t *)foreign_names[it.index]; i+=1)
+					putchar(foreign_names[it.index][1+i]);
+			}
 			break;
 		case Node::Call:
 		case Node::BroadcastCall:

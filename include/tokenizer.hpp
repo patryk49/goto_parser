@@ -348,6 +348,8 @@ Span<const char> get_identifier_name(const char **iter) noexcept{
 
 template<class A>
 uint16_t add_name(Span<const char> name, Array<const char *> &names, A &al) noexcept{
+	if (name.size == 1 && name[0] == '_') return UINT16_MAX;
+
 	for (size_t i=0; i!=names.size; i+=1)
 		if (name == Span<const char>{names[i]+1, *names[i]}) return i;
 
@@ -683,8 +685,8 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 				curr.type = Node::Conditional;
 				curr.index = UINT16_MAX;
 			} else{
-				curr.index = add_name(text, res.names, al);
 				curr.type = Node::UnresolvedType;
+				curr.index = add_name(text, res.names, al);
 			}
 			goto AddToken;
 		}

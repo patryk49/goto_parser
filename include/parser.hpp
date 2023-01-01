@@ -223,6 +223,7 @@ ParseResult parse(Span<Node> tokens) noexcept{
 		case Node::Double:
 		case Node::Character:
 		case Node::String:
+		case Node::UnresolvedType:
 		SimpleLiteral:
 			*res_it = curr;
 			res_it += 1;
