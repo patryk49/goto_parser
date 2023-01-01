@@ -108,7 +108,8 @@ struct Node{
 		BitAnd, BitNand,
 		BitXor,
 		LeftShift, RightShift,
-	
+		
+		Range,
 		Pipe,
 		LogicOr, LogicNor,
 		LogicAnd, LogicNand,
@@ -129,7 +130,7 @@ struct Node{
 		ArrayLiteral, StructLiteral,
 	
 	// MODIFIERS
-		Pound, Range, Broadcast,
+		Pound, Broadcast,
 	
 	// DECLARATIONS
 		Variable, Constant, Destructure,
@@ -261,6 +262,7 @@ Node get_number_token_from_iterator(
 		}, al);
 		
 		if (**inp_iter == '.'){
+			if (*(*inp_iter+1) == '.') goto JustReturn;
 		ParseFloat:
 			node.type = Node::Double;
 			data[data.size-1].float64 = strtod(prev_iter, (char**)inp_iter);
@@ -279,7 +281,7 @@ ReturnInt:
 		);
 		node.type = Node::Float;
 	}
-
+JustReturn:
 	return node;
 }
 

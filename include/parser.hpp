@@ -30,16 +30,16 @@ uint8_t precs_curr[] = {
 	12, 12, 12,             // Colon, DoubleColon, TripleColon,
 
 // ASSIGNS
-	30, 30, 30,     // Assign, AssignBytes, DestructuredAssign
-	30,             // ConcatenateAssign,
-	30,             // ModuloAssign,
-	30, 30, 30, 30, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
-	30, 30, 30, 30, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
-	30,             // PowerAssign,
-	30, 30,         // BitOrAssign, BitNorAssign,
-	30, 30,         // BitAndAssign, BitNandAssign,
-	30,             // BitXorAssign,
-	30, 30,         // LeftShiftAssign, RightShiftAssign,
+	29, 29, 29,     // Assign, AssignBytes, DestructuredAssign
+	29,             // ConcatenateAssign,
+	29,             // ModuloAssign,
+	29, 29, 29, 29, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
+	29, 29, 29, 29, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
+	29,             // PowerAssign,
+	29, 29,         // BitOrAssign, BitNorAssign,
+	29, 29,         // BitAndAssign, BitNandAssign,
+	29,             // BitXorAssign,
+	29, 29,         // LeftShiftAssign, RightShiftAssign,
 
 // BINARY
 	38,                     // Concatenate,
@@ -52,6 +52,7 @@ uint8_t precs_curr[] = {
 	52,                     // BitXor,
 	53, 53,                 // LeftShift, RightShift,
 
+	30,                     // Range,
 	32,                     // Pipe,
 	33, 33,                 // LogicOr, LogicNor,
 	34, 34,                 // LogicAnd, LogicNand,
@@ -90,16 +91,16 @@ uint8_t precs_stack[] = {
 	12, 12, 12,             // Colon, DoubleColon, TripleColon,
 
 // ASSIGNS
-	30, 30, 30,     // Assign, AssignBytes, DestructuredAssign
-	30,             // ConcatenateAssign,
-	30,             // ModuloAssign,
-	30, 30, 30, 30, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
-	30, 30, 30, 30, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
-	30,             // PowerAssign,
-	30, 30,         // BitOrAssign, BitNorAssign,
-	30, 30,         // BitAndAssign, BitNandAssign,
-	30,             // BitXorAssign,
-	30, 30,         // LeftShiftAssign, RightShiftAssign,
+	29, 29, 29,     // Assign, AssignBytes, DestructuredAssign
+	29,             // ConcatenateAssign,
+	29,             // ModuloAssign,
+	29, 29, 29, 29, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
+	29, 29, 29, 29, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
+	29,             // PowerAssign,
+	29, 29,         // BitOrAssign, BitNorAssign,
+	29, 29,         // BitAndAssign, BitNandAssign,
+	29,             // BitXorAssign,
+	29, 29,         // LeftShiftAssign, RightShiftAssign,
 
 // BINARY
 	38,                     // Concatenate,
@@ -112,6 +113,7 @@ uint8_t precs_stack[] = {
 	52,                     // BitXor,
 	53, 53,                 // LeftShift, RightShift,
 
+	30,                     // Range,
 	31,                     // Pipe,
 	33, 33,                 // LogicOr, LogicNor,
 	34, 34,                 // LogicAnd, LogicNand,
@@ -224,6 +226,7 @@ ParseResult parse(Span<Node> tokens) noexcept{
 		case Node::Character:
 		case Node::String:
 		case Node::UnresolvedType:
+		case Node::Pound:
 		SimpleLiteral:
 			*res_it = curr;
 			res_it += 1;

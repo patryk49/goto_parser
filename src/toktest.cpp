@@ -72,6 +72,7 @@ constexpr const char *token_names[] = {
 	"BitXor",
 	"LeftShift", "RightShift",
 
+	"Range",
 	"Pipe",
 	"LogicOr", "LogicNor",
 	"LogicAnd", "LogicNand",
