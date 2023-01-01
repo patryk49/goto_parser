@@ -777,7 +777,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 					input = input_backup;
 					goto AddToken;
 				}
-	// TO DO: add utf-8 support
+	// TO DO: add unicode support
 				curr.type = Node::Character;
 				curr.character = c;
 
@@ -837,7 +837,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 			Span<const char> text = get_identifier_name(&input);
 		
 			if (text.size != 0){
-				for (size_t i=(size_t )Node::If; i<=(size_t)Node::Const; i+=1)
+				for (size_t i=(size_t)Node::If; i<=(size_t)Node::Const; i+=1)
 					if (text == KeywordNames[(size_t)i]){
 						curr.type = (Node::Type)i;
 						curr.index = UINT16_MAX;    // this is for break and continue
