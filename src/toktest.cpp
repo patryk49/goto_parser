@@ -36,12 +36,12 @@ constexpr const char *token_names[] = {
 	"Minus", "LogicNot",
 	"UnresolvedValue",
 	"ArrayType",
+	"Broadcast",
 
 // POSTFIX OPERATIONS
 	"Dereference",
 	"GetField", "GetFieldIndexed",
-	"Call", "BroadcastCall", 
-	"Initailize",
+	"Call", "Initailize",
 	"GetProcedure", "IndexAccess",
 	"Conditional",
 	"Trait",
@@ -62,7 +62,10 @@ constexpr const char *token_names[] = {
 	"BitAndAssign", "BitNandAssign",
 	"BitXorAssign",
 	"LeftShiftAssign", "RightShiftAssign",
+	"RotaryLeftShiftAssign", "RotaryRightShiftAssign",
 
+	"Pipe",
+	
 	"Concatenate",
 	"Modulo",
 	"Add", "Subtract", "ModularAdd", "ModularSubtract", 
@@ -71,10 +74,9 @@ constexpr const char *token_names[] = {
 	"BitOr", "BitNor",
 	"BitAnd", "BitNand",
 	"BitXor",
-	"LeftShift", "RightShift",
+	"LeftShift", "RightShift", "RotaryLeftShift", "RotaryRightShift",
 
 	"Range",
-	"Pipe",
 	"LogicOr", "LogicNor",
 	"LogicAnd", "LogicNand",
 	"Equal", "NotEqual", "Lesser", "Greater", "LesserEqual", "GreaterEqual",
@@ -102,9 +104,9 @@ constexpr const char *token_names[] = {
 
 
 void print_error(Error err) noexcept{
-	while (err.pos != 0){ err.pos-=1; putc(' ', stderr); }
+	for (size_t i=err.pos; i!=0;){ i-=1; putc(' ', stderr); }
 	putc('^', stderr);
-	putc('\n', stderr);
+	putc(' ', stderr);
 	fputs(err.msg.ptr, stderr);
 	putc('\n', stderr);
 	exit(1);
@@ -177,6 +179,7 @@ int main(){
 			}
 			break;
 		case Node::GetField:
+		case Node::EnumLiteral:
 		case Node::Trait:
 			if (it.index == UINT16_MAX){ 
 				printf(": ---");
@@ -187,7 +190,6 @@ int main(){
 			}
 			break;
 		case Node::Call:
-		case Node::BroadcastCall:
 		case Node::GetProcedure:
 		case Node::IndexAccess:
 		case Node::GetFieldIndexed:
@@ -200,7 +202,7 @@ int main(){
 		default: 
 			if (it.broadcast && (
 				(Node::Concatenate <=it.type && it.type <= Node::Reinterpret) ||
-				(it.type == Node::BitNot || it.type == Node::LogicNot || it.type == Node::Subtract)
+				(it.type == Node::BitNot || it.type == Node::LogicNot || it.type == Node::Minus)
 			)) printf(" ~ Broadcasted");
 			break;
 		}

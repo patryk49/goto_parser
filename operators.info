@@ -118,6 +118,15 @@ BASIC ALIASES:
 Int, Uns,
 Iptr, Uptr,
 
+INTEGRAL TYPE FIELDS:
+Min, Max, Bits,
+bit,
+bitfloor, bitceil, bitwidth, popcount,
+zerobits_l, zerobits_r, onebits_l, onebits_r,
+
+
+
+
 SWITCH NOTATION
 	if x == {
 	} 1 :{

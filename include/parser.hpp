@@ -4,7 +4,7 @@
 
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
 
-uint8_t precs_curr[] = {
+uint8_t precs_right[] = {
 // OPENING SYMBOLS
 	80, 80, 80, 80, 80,     // OpenPar, OpenBracket, OpenBrace, OpenScope, OpenArrayType,
 	
@@ -14,13 +14,13 @@ uint8_t precs_curr[] = {
 	72, 72,                 // Minus, LogicNot,
 	72,                     // UnresolvedValue,
 	72,                     // ArrayType,
+	69,                     // Broadcast,
 
 // POSTFIX
 	84,                     // Dereference,
 	84,                     // GetField,
 	84,                     // GetFiledIndexed,
-	84, 84,                 // Call, BroadcastCall, 
-	80,                     // Initialize
+	84, 80,                 // Call, Initialize,
 	84, 84,                 // GetProcedure, IndexAccess,
 	32,                     // Conditional,
 	84,                     // GetTrait,
@@ -40,8 +40,11 @@ uint8_t precs_curr[] = {
 	29, 29,         // BitAndAssign, BitNandAssign,
 	29,             // BitXorAssign,
 	29, 29,         // LeftShiftAssign, RightShiftAssign,
+	29, 29,         // RotaryLeftShiftAssign, RotaryRightShiftAssign,
 
 // BINARY
+	32,                     // Pipe,
+
 	38,                     // Concatenate,
 	39,                     // Modulo,
 	40, 40, 40, 40,         // Add, Subtract, ModularAdd, ModularSubtract, 
@@ -50,10 +53,9 @@ uint8_t precs_curr[] = {
 	50, 50,                 // BitOr, BitNor,
 	51, 51,                 // BitAnd, BitNand,
 	52,                     // BitXor,
-	53, 53,                 // LeftShift, RightShift,
+	53, 53, 53, 53,         // LeftShift, RightShift, RotaryLeftShift, RotaryRightShift,
 
 	30,                     // Range,
-	32,                     // Pipe,
 	33, 33,                 // LogicOr, LogicNor,
 	34, 34,                 // LogicAnd, LogicNand,
 	35, 35, 35, 35, 35, 35, // Equal, NotEqual, Lesser, Greater, LesserEqual, GreaterEqual,
@@ -65,7 +67,7 @@ uint8_t precs_curr[] = {
 };
 
 
-uint8_t precs_stack[] = {
+uint8_t precs_left[] = {
 // OPENING SYMBOLS
 	0, 0, 0, 0, 0,          // OpenPar, OpenBracket, OpenBrace, OpenScope, OpenArrayType,
 	
@@ -75,13 +77,13 @@ uint8_t precs_stack[] = {
 	82, 82,                 // Minus, LogicNot,
 	82,                     // UnresolvedValue,
 	82,                     // ArrayType,
+	69,                     // Broadcast,
 
 // POSTFIX
 	84,                     // Dereference,
 	84,                     // GetField,
 	 0,                     // GetFiledIndexed,
-	 0,  0,                 // Call, BroadcastCall, 
-	 0,                     // Initialize
+	 0,  0,                 // Call, Initialize,
 	 0,  0,                 // GetProcedure, IndexAccess,
 	 0,                     // Conditional,
 	84,                     // GetTrait,
@@ -101,8 +103,11 @@ uint8_t precs_stack[] = {
 	29, 29,         // BitAndAssign, BitNandAssign,
 	29,             // BitXorAssign,
 	29, 29,         // LeftShiftAssign, RightShiftAssign,
+	29, 29,         // RotaryLeftShiftAssign, RotaryRightShiftAssign,
 
 // BINARY
+	68,                     // Pipe,
+	
 	38,                     // Concatenate,
 	39,                     // Modulo,
 	40, 40, 40, 40,         // Add, Subtract, ModularAdd, ModularSubtract, 
@@ -111,10 +116,9 @@ uint8_t precs_stack[] = {
 	50, 50,                 // BitOr, BitNor,
 	51, 51,                 // BitAnd, BitNand,
 	52,                     // BitXor,
-	53, 53,                 // LeftShift, RightShift,
+	53, 53, 53, 53,         // LeftShift, RightShift, RotaryLeftShift, RotaryRightShift,
 
 	30,                     // Range,
-	31,                     // Pipe,
 	33, 33,                 // LogicOr, LogicNor,
 	34, 34,                 // LogicAnd, LogicNand,
 	35, 35, 35, 35, 35, 35, // Equal, NotEqual, Lesser, Greater, LesserEqual, GreaterEqual,
@@ -128,8 +132,7 @@ uint8_t precs_stack[] = {
 // LIST OF OPENING SYMBOLS
 // OpenPar, OpenBracket, OpenBrace, OpenScope, OpenArrayType,
 // GetFieldIndexed,
-// Call, BroadcastCall,
-// Initialize,
+// Call, Initialize,
 // GetProcedure, IndexAccess,
 // Conditional
 // Do, Try,
@@ -162,6 +165,30 @@ ParseResult parse(Span<Node> tokens) noexcept{
 
 	StatementLevel:{
 		goto Return;
+		
+		Node curr = *it;
+		it += 1;
+
+		switch (curr.type){
+		case Node::CloseBrace:
+		
+		case Node::Return:
+		case Node::Defer:
+
+		case Node::If:
+		case Node::Else:
+		case Node::While:
+		case Node::For:
+		
+		case Node::Break:
+		case Node::Continue:
+		case Node::Goto:
+
+		case Node::Assert:
+
+		default:
+			goto ExpectValue;
+		}
 	}
 
 	ExpectValue:{
@@ -172,26 +199,32 @@ ParseResult parse(Span<Node> tokens) noexcept{
 		case Node::OpenPar:       // Precedence Modifier
 		case Node::OpenBrace:     // Struct Literal
 		case Node::OpenBracket:   // Array Literal
-		case Node::OpenArrayType:     // Array Type Modifier
+		case Node::OpenArrayType: // Array Type Modifier
 			curr.count = 1;
 			push_value(opers, curr);
 			push_value(scopes, curr);
 			goto ExpectValue;
-
+	
 		case Node::Broadcast:
-			curr = *it;
-			it += 1;
-			[[unlikely]] if (
-				curr.type != Node::BitNot &&
-				curr.type != Node::LogicNot &&
-				curr.type != Node::Subtract
-			) ERROR_RETURN("expression cannot be broadcasted", curr.pos);
-			if (curr.type == Node::Subtract) curr.type = Node::Minus;
-			curr.broadcast = true;
-			goto ExpectValue;
+			if (
+				it->type == Node::BitNot ||
+				it->type == Node::LogicNot ||
+				it->type == Node::Subtract
+			){
+				curr = *it;
+				it += 1;
+				if (curr.type == Node::Subtract) curr.type = Node::Minus;
+				curr.broadcast = true;
+			}
+			goto SimplePrefixOperator;
 
 		case Node::Subtract:
 			curr.type = Node::Minus;
+			goto SimplePrefixOperator;
+		case Node::Power:
+			curr.type = Node::Pointer;
+			push_value(opers, curr);
+			curr.pos += 1;
 			goto SimplePrefixOperator;
 		case Node::Multiply:
 			curr.type = Node::Pointer;
@@ -243,19 +276,15 @@ ParseResult parse(Span<Node> tokens) noexcept{
 		if (curr.type == Node::Broadcast){
 			curr = *it;
 			it += 1;
-			if (curr.type == Node::OpenPar){
-				curr.type = Node::BroadcastCall;
-			} else{
-				[[unlikely]] if (Node::Concatenate>curr.type || curr.type>Node::Reinterpret)
-					ERROR_RETURN("operator cannot be broadcasted", curr.pos);
-				curr.broadcast = true;
-			}
+			[[unlikely]] if (Node::Concatenate>curr.type || curr.type>Node::Reinterpret)
+				ERROR_RETURN("operator cannot be broadcasted", curr.pos);
+			curr.broadcast = true;
 		}
 
 		if (Node::OpenPar <= curr.type && curr.type <= Node::Reinterpret){
 			for (;;){
 				Node last_op = opers[opers.size-1];
-				if (precs_curr[curr.type-FromNode] > precs_stack[last_op.type-FromNode]) break;
+				if (precs_right[curr.type-FromNode] > precs_left[last_op.type-FromNode]) break;
 				
 				if (last_op.type != Node::Comma){
 					*res_it = last_op;
@@ -309,7 +338,6 @@ ParseResult parse(Span<Node> tokens) noexcept{
 				break;
 
 			case Node::GetProcedure:
-			case Node::BroadcastCall:
 				if (it->type == Node::ClosePar){
 					it += 1;
 					curr.count = 0;
@@ -358,7 +386,6 @@ ParseResult parse(Span<Node> tokens) noexcept{
 				goto ExpectValue;
 			
 			case Node::Call:
-			case Node::BroadcastCall:
 			case Node::GetProcedure:
 				[[unlikely]] if (curr.type != Node::ClosePar)
 					ERROR_RETURN("mismatched parenthesis", curr.pos);

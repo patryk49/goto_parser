@@ -73,13 +73,13 @@ struct Node{
 		Minus, LogicNot,
 		UnresolvedValue,
 		ArrayType,
+		Broadcast,
 	
 	// POSTFIX OPERATIONS
 		Dereference,
 		GetField,
 		GetFieldIndexed,
-		Call, BroadcastCall,
-		Initialize,
+		Call, Initialize,
 		GetProcedure, IndexAccess,
 		Conditional,
 		Trait,
@@ -100,6 +100,9 @@ struct Node{
 		BitAndAssign, BitNandAssign,
 		BitXorAssign,
 		LeftShiftAssign, RightShiftAssign,
+		RotaryLeftShiftAssign, RotaryRightShiftAssign,
+		
+		Pipe,
 	
 		Concatenate,
 		Modulo,
@@ -109,10 +112,9 @@ struct Node{
 		BitOr, BitNor,
 		BitAnd, BitNand,
 		BitXor,
-		LeftShift, RightShift,
+		LeftShift, RightShift, RotaryLeftShift, RotaryRightShift,
 		
 		Range,
-		Pipe,
 		LogicOr, LogicNor,
 		LogicAnd, LogicNand,
 		Equal, NotEqual, Lesser, Greater, LesserEqual, GreaterEqual,
@@ -132,7 +134,7 @@ struct Node{
 		ArrayLiteral, StructLiteral,
 	
 	// MODIFIERS
-		Pound, Broadcast,
+		Pound,
 	
 	// DECLARATIONS
 		Variable, Constant, Destructure,
@@ -183,17 +185,16 @@ union NodeData{
 // TO DO: add utf-8 support
 uint32_t get_char_from_iterator(const char **inp_iter) noexcept{
 	uint32_t c = **inp_iter;
-	*inp_iter += 1;
 
-	if (c=='\n' || c=='\0') return (uint32_t)-1; // -1 means error
+	if (c=='\n' || c=='\0' || c=='\'' || c=='\"') return (uint32_t)-1; // -1 means error
 
-	if (c == '\\')
-		switch (**inp_iter){
+	if (c == '\\'){
+		*inp_iter += 1;
+		c = **inp_iter;
+		switch (c){
 		case '\'':
 		case '\"':
 		case '\\':
-			c = **inp_iter;
-			*inp_iter += 1;
 			break;
 		case '0' ... '9':
 			c = strtol(*inp_iter, (char **)inp_iter, 10);
@@ -202,16 +203,22 @@ uint32_t get_char_from_iterator(const char **inp_iter) noexcept{
 				return 0;
 			}
 			break;
-		case 'n': ++*inp_iter;
-			return '\n';
-		case 't': ++*inp_iter;
-			return '\t';
-		case 'v': ++*inp_iter;
-			return '\v';
+		case 'n':
+			c = '\n';
+			break;
+		case 't':
+			c = '\t';
+			break;
+		case 'v':
+			c = '\v';
+			break;
 		case '\n':
-		case '\v': ++*inp_iter;
-			return (uint32_t)-2; // -2 means that it should be skipped
+		case '\v':
+			c = (uint32_t)-2; // -2 means that it should be skipped
+			break;
 		}
+	}
+	*inp_iter += 1;
 	return c;
 }
 
@@ -404,7 +411,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 			}
 			if (!is_whitespace(*(input-2))){
 				Node::Type prev = res.tokens[res.tokens.size-1].type;
-				if (Node::Concatenate <= prev && prev <= Node::RightShift){
+				if (Node::Concatenate <= prev && prev <= Node::RotaryRightShift){
 					res.tokens[res.tokens.size-1].type = (Node::Type)(
 						(uint16_t)res.tokens[res.tokens.size-1].type +
 						(Node::AddAssign - Node::Add)
@@ -469,24 +476,26 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 			if (*input == '/'){
 				input += 1;
 				while (*input!='\0' && *input!='\n') input += 1;
-				break;
+				goto Break;
 			}
 			if (*input == '*'){
-				input += 1;
 				size_t depth = 1;
 				for (;;){
-					if (*input == '\0') break;
-					if (input[0]=='*' && input[1]=='/'){
-						depth -= 1;
-						input += 1;
-						if (depth == 0) break;
-					} else if (input[0]=='/' && input[1]=='*'){
-						depth += 1;
-						input += 1;
-					}
 					input += 1;
+					[[unlikely]] if (*input == '\0') ERROR_RETURN("unfinished comment", curr.pos);
+					
+					if (*input=='*' && *(input+1)=='/'){
+						input += 1;
+						depth -= 1;
+						if (depth == 0){
+							input += 1;
+							goto Break;
+						}
+					} else if (input[0]=='/' && input[1]=='*'){
+						input += 1;
+						depth += 1;
+					}
 				}
-				break;
 			}
 			if (*input == '%'){
 				curr.type = Node::ModularDivide;
@@ -507,11 +516,11 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 
 		case '|': input += 1;
 			if (*input == '|'){
+				input += 1;
 				curr.type = Node::LogicOr;
-				input += 1;
 			} else if (*input == '>'){
-				curr.type = Node::Pipe;
 				input += 1;
+				curr.type = Node::Pipe;
 			} else{
 				curr.type = Node::BitOr;
 			}
@@ -520,8 +529,8 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 
 		case '&': input += 1;
 			if (*input == '&'){
-				curr.type = Node::LogicAnd;
 				input += 1;
+				curr.type = Node::LogicAnd;
 			} else
 				curr.type = Node::BitAnd;
 			goto AddToken;
@@ -529,11 +538,11 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 
 		case '~': input += 1;
 			if (*input == '%' && *(input+1) == '~'){
+				input += 2;
 				curr.type = Node::Reinterpret;
-				input += 2;
 			} else if (*input == '%' && *(input+1) == '='){
-				curr.type = Node::AssignBytes;
 				input += 2;
+				curr.type = Node::AssignBytes;
 			} else{
 				curr.type = Node::Cast;
 			}
@@ -542,18 +551,23 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 
 		case '<': input += 1;
 			if (*input == '='){
+				input += 1;
 				curr.type = Node::LesserEqual;
-				input += 1;
 			} else if (*input == '>'){
-				curr.type = Node::View;
 				input += 1;
+				curr.type = Node::View;
 			} else if (*input == '!' && *(input+1) == '>'){
+				input += 2;
 				curr.type = Node::View;
 				curr.owning = true;
-				input += 2;
 			} else if (*input == '<'){
-				curr.type = Node::LeftShift;
 				input += 1;
+				if (*input == '%'){
+					input += 1;
+					curr.type = Node::RotaryLeftShift;
+				} else{
+					curr.type = Node::LeftShift;
+				}
 			} else{
 				curr.type = Node::Lesser;
 			}
@@ -562,14 +576,19 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 
 		case '>': input += 1;
 			if (*input == '='){
+				input += 1;
 				curr.type = Node::GreaterEqual;
-				input += 1;
 			} else if (*input == '>'){
-				curr.type = Node::RightShift;
 				input += 1;
+				if (*input == '%'){
+					input += 1;
+					curr.type = Node::RotaryRightShift;
+				} else{
+					curr.type = Node::RightShift;
+				}
 			} else if (*input == '<'){
-				curr.type = Node::CrossProduct;
 				input += 1;
+				curr.type = Node::CrossProduct;
 			} else{
 				curr.type = Node::Greater;
 			}
@@ -774,7 +793,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 				input += 1;
 				const char *input_backup = input;
 				uint32_t c = get_char_from_iterator(&input);
-				if (*input != '\''){
+				if (c==(uint32_t)-1 || *input != '\''){
 					curr.type = Node::Dereference;
 					input = input_backup;
 					goto AddToken;
