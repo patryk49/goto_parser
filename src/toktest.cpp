@@ -5,7 +5,8 @@
 
 constexpr const char *token_names[] = {
 	"If", "Else", "While", "For",
-	"Defer", "Return", "Break", "Continue",
+	"Defer", "Return",
+	"Break", "Continue", "Goto",
 	"Do", "Try",
 	"Assert",
 
@@ -152,6 +153,7 @@ int main(){
 		case Node::OpenScope:
 		case Node::Break:
 		case Node::Continue:
+		case Node::Goto:
 			if (it.index == UINT16_MAX){
 				printf(": ---");
 			} else{

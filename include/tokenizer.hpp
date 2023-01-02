@@ -12,7 +12,8 @@
 constexpr Span<const char> KeywordNames[] = {
 // KEYWORDS
 	slice("if"), slice("else"), slice("while"), slice("for"),
-	slice("defer"), slice("return"), slice("break"), slice("continue"),
+	slice("defer"), slice("return"),
+	slice("break"), slice("continue"), slice("goto"),
 	slice("do"), slice("try"),
 	slice("assert"),
 	
@@ -41,7 +42,8 @@ struct Node{
 	enum Type : int16_t{
 	// KEYWORDS
 		If, Else, While, For,
-		Defer, Return, Break, Continue,
+		Defer, Return,
+		Break, Continue, Goto,
 		Do, Try,
 		Assert,
 	
@@ -812,7 +814,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 				deinit(string, al);
 			} else{
 				Node::Type last_node_type = res.tokens[res.tokens.size-1].type;
-				if (last_node_type == Node::Break || last_node_type == Node::Continue){
+				if (last_node_type <= Node::Break && last_node_type <= Node::Goto){
 					res.tokens[res.tokens.size-1].index = add_name(
 						Span<const char>{(const char *)string.ptr+4, string.size-4},
 						scope_names, al
