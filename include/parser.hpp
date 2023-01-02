@@ -6,7 +6,7 @@
 
 uint8_t precs_right[] = {
 // OPENING SYMBOLS
-	80, 80, 80, 80, 80,     // OpenPar, OpenBracket, OpenBrace, OpenScope, OpenArrayType,
+	86, 86, 80, 86, 86,     // OpenPar, OpenBracket, OpenBrace, OpenScope, OpenArrayType,
 	
 // PREFIX
 	72, 72,                 // Pointer, BitNot,
