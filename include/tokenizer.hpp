@@ -39,7 +39,7 @@ constexpr Span<const char> KeywordNames[] = {
 
 // TOKEN CLASS
 struct Node{
-	enum Type : int16_t{
+	enum Type : uint8_t{
 	// KEYWORDS
 		If, Else, While, For,
 		Defer, Return,
@@ -53,26 +53,18 @@ struct Node{
 
 		Asm,
 		At, Const,
-
-	// BASIC CONSTANTS
-		Class, Null, True, False,
-	
-	// BASIC COMPILE TIME INFORMATION
-		GetClass, GetIsconst,
-		GetBytes, GetAlignment, GetFieldcount,
-	
-	// CLOSING SYMBOLS
-		ClosePar, CloseBracket, CloseBrace, CloseScope,
 	
 	// OPENING SYMBOLS
-		OpenPar, OpenBracket, OpenBrace, OpenScope, OpenArrayType,
+		OpenPar, OpenBracket, OpenBrace, OpenScope,
+		OpenArrayClass, OpenProcedureLiteral,
+		DoBlock, TryExpression,
 		
 	// PREFIX OPERATNS
 		Pointer, BitNot,
 		Span, View,
 		Minus, LogicNot,
 		UnresolvedValue,
-		ArrayType,
+		ArrayClass, ProcedureClass, ProcedureLiteral,
 		Broadcast,
 	
 	// POSTFIX OPERATIONS
@@ -85,7 +77,7 @@ struct Node{
 		Trait,
 	
 	// SEPARATORS
-		Comma, Terminator,
+		Separator,
 		Colon, DoubleColon, TripleColon,
 	
 	// BINARY OPERATIONS
@@ -135,21 +127,38 @@ struct Node{
 	
 	// MODIFIERS
 		Pound,
+
+	// BASIC CONSTANTS
+		Class, Null, True, False,
+	
+	// BASIC COMPILE TIME INFORMATION
+		GetClass, GetIsconst,
+		GetBytes, GetAlignment, GetFieldcount,
+	
+	// CLOSING SYMBOLS
+		ClosePar, CloseBracket, CloseBrace, CloseScope,
 	
 	// DECLARATIONS
 		Variable, Constant, Destructure,
 	};
 
+	enum Separ : uint8_t {
+		Comma = 0,
+		Semicolon = 1
+	};
+
 // DATA MEMBERS
-		Type type;
-		union{
-			uint16_t index;
-			uint16_t count;
-			char character;
-			bool owning;
-			bool broadcast;
-		};
-		uint32_t pos;
+	Type type;
+	uint8_t capture_count;
+	union{
+		uint16_t index;
+		uint16_t count;
+		char character;
+		bool owning;
+		bool broadcast;
+		Separ separator;
+	};
+	uint32_t pos;
 };
 
 
@@ -172,13 +181,19 @@ bool is_keyword_statement(Node::Type type) noexcept{
 }
 
 
-union NodeData{
+
+// Union that can contain values at compile time,
+// value's class_id must be stored somewhere else
+union Value{
+	uint64_t class_id;
+	int64_t i64;
+	uint64_t u64;
+	float f32;
+	double f64;
+	uint64_t rune;
 	char *string;
-	int64_t sint;
-	uint64_t uint;
-	float float32;
-	double float64;
-	uint64_t unicode_char;
+	uint64_t data;
+	uint8_t *ptr;
 };
 
 
@@ -228,10 +243,10 @@ template<class A>
 Node get_number_token_from_iterator(
 	const char **inp_iter,
 	uint32_t pos,
-	Array<NodeData> &data,
+	Array<Value> &data,
 	A &al
 ) noexcept{
-	Node node = {.type = Node::Integer, .index=data.size, .pos = pos};
+	Node node = {Node::Integer, 0, {.index=data.size}, pos};
 
 	const char *prev_iter = *inp_iter;
 
@@ -245,20 +260,20 @@ Node get_number_token_from_iterator(
 		*inp_iter += 1;
 		switch (**inp_iter){
 		case 'x':
-			push_value(data, NodeData{
-				.uint = (uint64_t)strtoul(*inp_iter+1, (char **)inp_iter, 16)
+			push_value(data, Value{
+				.u64 = (uint64_t)strtoul(*inp_iter+1, (char **)inp_iter, 16)
 			}, al);
 			goto ReturnInt;
 		
 		case 'o':
-			push_value(data, NodeData{
-				.uint = (uint64_t)strtoul(*inp_iter+1, (char **)inp_iter, 8)
+			push_value(data, Value{
+				.u64 = (uint64_t)strtoul(*inp_iter+1, (char **)inp_iter, 8)
 			}, al);
 			goto ReturnInt;
 
 		case 'b':
-			push_value(data, NodeData{
-				.uint = (uint64_t)strtoul(*inp_iter+1, (char **)inp_iter, 2)
+			push_value(data, Value{
+				.u64 = (uint64_t)strtoul(*inp_iter+1, (char **)inp_iter, 2)
 			}, al);
 			goto ReturnInt;
 
@@ -266,15 +281,15 @@ Node get_number_token_from_iterator(
 		}
 	}
 	{
-		push_value(data, NodeData{
-			.uint = (uint64_t)strtoul(*inp_iter, (char **)inp_iter, 10)
+		push_value(data, Value{
+			.u64 = (uint64_t)strtoul(*inp_iter, (char **)inp_iter, 10)
 		}, al);
 		
 		if (**inp_iter == '.'){
 			if (*(*inp_iter+1) == '.') goto JustReturn;
 		ParseFloat:
 			node.type = Node::Double;
-			data[data.size-1].float64 = strtod(prev_iter, (char**)inp_iter);
+			data[data.size-1].f64 = strtod(prev_iter, (char**)inp_iter);
 		}
 	}
 
@@ -284,9 +299,9 @@ ReturnInt:
 		node.type = Node::Unsigned;
 	} else if (**inp_iter == 'f'){
 		*inp_iter += 1;
-		data[data.size-1].float32 = (
+		data[data.size-1].f32 = (
 			node.type==Node::Integer ?
-			(float)data[data.size-1].sint : (float)data[data.size-1].float64
+			(float)data[data.size-1].u64 : (float)data[data.size-1].f64
 		);
 		node.type = Node::Float;
 	}
@@ -305,7 +320,7 @@ void print_codeline(const char *text, size_t position) noexcept{
 	size_t row_position = 0;
 
 	for (size_t i=0; i!=position; ++i){
-		++col;
+		col += 1;
 		if (text[i]=='\n' || text[i]=='\v'){
 			row_position += col;
 			++row;
@@ -380,7 +395,7 @@ struct TokensResult{
 	Array<Node> tokens;
 	Array<const char *> names;
 	Array<const char *> foreign_names;
-	Array<NodeData> data;
+	Array<Value> data;
 	Error err;
 };
 
@@ -389,7 +404,7 @@ struct TokensResult{
 template<class A>
 TokensResult make_tokens(const char *input, A &al) noexcept{
 	TokensResult res = {};
-	push_value(res.tokens, Node{.type=Node::Null, .index=0, .pos=0}, al);
+	push_value(res.tokens, Node{Node::Null, 0, {.index=0}, 0}, al);
 #define ERROR_RETURN(msg, pos) { res.err = {slice(msg), (pos)}; goto Return; }
 
 	FiniteArray<uint32_t, 32> scope_openings;
@@ -405,23 +420,26 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 		switch (*input){
 		case '=': input += 1;
 			if (*input == '='){
-				curr.type = Node::Equal;
 				input += 1;
+				curr.type = Node::Equal;
+				goto AddToken;
+			}
+			if (*input == '>'){
+				input += 1;
+				curr.type = Node::ProcedureLiteral;
 				goto AddToken;
 			}
 			if (!is_whitespace(*(input-2))){
 				Node::Type prev = res.tokens[res.tokens.size-1].type;
 				if (Node::Concatenate <= prev && prev <= Node::RotaryRightShift){
 					res.tokens[res.tokens.size-1].type = (Node::Type)(
-						(uint16_t)res.tokens[res.tokens.size-1].type +
-						(Node::AddAssign - Node::Add)
+						(uint16_t)prev + (Node::AddAssign - Node::Add)
 					);
-					goto Break;
+					goto NextToken;
 				}
 			}
 			curr.type = Node::Assign;
 			goto AddToken;
-
 
 		case '+': input += 1;
 			if (*input == '+'){
@@ -441,15 +459,14 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 
 		case '-': input += 1;
 			if (*input == '>'){
-				ERROR_RETURN("Operator -> is not implemented.", curr.pos);
-				goto Break;
-			}
-			if (*input == '%'){
+				input += 1;
+				curr.type = Node::ProcedureClass;
+			} else if (*input == '%'){
+				input += 1;
 				curr.type = Node::ModularSubtract;
-				input += 1;
 			} else if (*input == '&'){
-				curr.type = Node::FullSubtract;
 				input += 1;
+				curr.type = Node::FullSubtract;
 			} else{
 				curr.type = Node::Subtract;
 			}
@@ -476,7 +493,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 			if (*input == '/'){
 				input += 1;
 				while (*input!='\0' && *input!='\n') input += 1;
-				goto Break;
+				goto NextToken;
 			}
 			if (*input == '*'){
 				size_t depth = 1;
@@ -489,7 +506,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 						depth -= 1;
 						if (depth == 0){
 							input += 1;
-							goto Break;
+							goto NextToken;
 						}
 					} else if (input[0]=='/' && input[1]=='*'){
 						input += 1;
@@ -633,15 +650,9 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 		
 		
 		case '{': input += 1;
-			if (*input == '}'){
-				input += 1;
-				curr.type = Node::Initialize;
-				curr.count = 0;
-			} else{
-				push_value(scope_openings, res.tokens.size);
-				curr.type = Node::OpenBrace;
-				curr.index = UINT16_MAX;
-			}
+			push_value(scope_openings, res.tokens.size);
+			curr.type = Node::OpenBrace;
+			curr.index = UINT16_MAX;
 			goto AddToken;
 		
 		
@@ -659,7 +670,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 				curr.type = Node::Span;
 			} else if (*input == ':'){
 				input += 1;
-				curr.type = Node::OpenArrayType;
+				curr.type = Node::OpenArrayClass;
 			} else if (*input == '!' && *(input+1) == ']'){
 				curr.type = Node::Span;
 				curr.owning = true;
@@ -706,7 +717,6 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 			Span<const char> text = get_identifier_name(&input);
 			if (text.size == 0){
 				curr.type = Node::Conditional;
-				curr.index = UINT16_MAX;
 			} else{
 				curr.type = Node::UnresolvedType;
 				curr.index = add_name(text, res.names, al);
@@ -735,14 +745,14 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 			} else{
 				if (prev->type == Node::UnresolvedType){
 					prev->type = Node::UnresolvedValue;
-					goto Break;
+					goto NextToken;
 				}
 				curr.type = Node::Colon;
 			}
 
 			if (prev->type == Node::Identifier){
 				prev->type = curr.type;
-				goto Break;
+				goto NextToken;
 			}
 			curr.index = UINT16_MAX;
 			goto AddToken;
@@ -750,7 +760,8 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 		
 
 		case ',': input += 1;
-			curr.type = Node::Comma;
+			curr.type = Node::Separator;
+			curr.separator = Node::Separ::Comma;
 			goto AddToken;
 
 
@@ -765,7 +776,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 				input += 1;
 				curr.type = Node::GetFieldIndexed;
 			} else if (is_number(*input)){
-				--input;
+				input -= 1;
 				curr = get_number_token_from_iterator(&input, curr.pos, res.data, al);
 			} else{
 				if (*input == '#'){
@@ -782,10 +793,10 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 
 
 		case ';':
+			input += 1;
 			if (!is_empty(scope_openings))
 				res.tokens[(size_t)scope_openings[scope_openings.size-1]].type = Node::OpenScope;
-			input += 1;
-			curr.type = Node::Terminator;
+			curr.separator = Node::Separ::Semicolon;
 			goto AddToken;
 		
 		
@@ -838,11 +849,11 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 						Span<const char>{(const char *)string.ptr+4, string.size-4},
 						scope_names, al
 					);
-					goto Break;
+					goto NextToken;
 				} else{
 					curr.type = Node::String;
 					curr.index = res.data.size;
-					push_value(res.data, NodeData{.string=(char *)string.ptr}, al);
+					push_value(res.data, Value{.string=(char *)string.ptr}, al);
 				}
 			}
 			goto AddToken;
@@ -852,7 +863,7 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 		case '\t':
 		case '\n':
 			input += 1;
-			goto Break;
+			goto NextToken;
 
 		default:{
 			Span<const char> text = get_identifier_name(&input);
@@ -882,9 +893,10 @@ TokensResult make_tokens(const char *input, A &al) noexcept{
 		}}
 	AddToken:
 		push_value(res.tokens, curr, al);
-	Break:
+	NextToken:
 		curr.pos += input - prev_input;
 	}
+
 #undef ERROR_RETURN
 Return:
 	deinit(scope_names, al);

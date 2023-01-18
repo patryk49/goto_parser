@@ -4,6 +4,7 @@
 
 
 constexpr const char *token_names[] = {
+// KEYWORDS
 	"If", "Else", "While", "For",
 	"Defer", "Return",
 	"Break", "Continue", "Goto",
@@ -17,25 +18,17 @@ constexpr const char *token_names[] = {
 	"Asm",
 	"At", "Const",
 
-// BASIC CONSTANTS
-	"Class", "Null", "True", "False",
-
-// BASIC COMPILE TIME INFORMATION
-	"GetClass", "GetIsconst",
-	"GetBytes", "GetAlignment", "GetFieldcount",
-	
-// CLOSING SYMBOLS
-	"ClosePar", "CloseBracket", "CloseBrace", "CloseScope",
-
 // OPENING SYMBOLS
-	"OpenPar", "OpenBracket", "OpenBrace", "OpenScope", "OpenArrayType", 
+	"OpenPar", "OpenBracket", "OpenBrace", "OpenScope",
+	"OpenArrayClass", "OpenProcedureLiteral",
+	"DoBlock", "TryExpression",
 
 // PREFIX OPERATIONS
 	"Pointer", "BitNot",
 	"Span", "View",
 	"Minus", "LogicNot",
 	"UnresolvedValue",
-	"ArrayType",
+	"ArrayClass", "ProcedureClass", "ProcedureLiteral",
 	"Broadcast",
 
 // POSTFIX OPERATIONS
@@ -47,7 +40,7 @@ constexpr const char *token_names[] = {
 	"Trait",
 
 // SEPARATORS
-	"Comma", "Terminator",
+	"Separator",
 	"Colon", "DoubleColon", "TripleColon",
 
 // BINARY OPERATIONS
@@ -96,7 +89,18 @@ constexpr const char *token_names[] = {
 	"ArrayLiteral", "StructLiteral",
 
 // MODIFIERS
-	"Pound", "Range", "Broadcast"
+	"Pound",
+
+// BASIC CONSTANTS
+	"Class", "Null", "True", "False",
+
+// BASIC COMPILE TIME INFORMATION
+	"GetClass", "GetIsconst",
+	"GetBytes", "GetAlignment", "GetFieldcount",
+	
+// CLOSING SYMBOLS
+	"ClosePar", "CloseBracket", "CloseBrace", "CloseScope",
+
 
 // DECLARATIONS
 	"Variable", "Constant", "Destructure",
@@ -141,16 +145,16 @@ int main(){
 			printf(": \'%c\'", it.character);
 			break;
 		case Node::Integer:
-			printf(": %li", data[it.index].sint);
+			printf(": %li", data[it.index].i64);
 			break;
 		case Node::Unsigned:
-			printf(": %lu", data[it.index].uint);
+			printf(": %lu", data[it.index].u64);
 			break;
 		case Node::Float:
-			printf(": %f", data[it.index].float32);
+			printf(": %f", data[it.index].f32);
 			break;
 		case Node::Double:
-			printf(": %f", data[it.index].float64);
+			printf(": %f", data[it.index].f64);
 			break;
 		case Node::OpenScope:
 		case Node::Break:
@@ -196,8 +200,12 @@ int main(){
 		case Node::Initialize:
 		case Node::ArrayLiteral:
 		case Node::StructLiteral:
-		case Node::ArrayType:
+		case Node::ArrayClass:
 			printf(": %u", (unsigned)it.count);
+			break;
+		case Node::ProcedureClass:
+		case Node::ProcedureLiteral:
+			printf(": %u, captures: %u", (unsigned)it.count, (unsigned)it.capture_count);
 			break;
 		default: 
 			if (it.broadcast && (

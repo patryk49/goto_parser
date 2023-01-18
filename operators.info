@@ -53,7 +53,7 @@ T~v == T~%~v
 POSTFIX OPERATORS:
 .field     .[index]   .[#-index]                         field access, indexed field access, reverse indexed field access
 (args)     .(args)                                       call, get procedure
-[index]    [#-index]]                                    access index, access reverse index
+[index]    [#-index]                                     access index, access reverse index
 [from..to] [from..]   [..to]    []                       get span
 ?(on_true)(on_false)                                     conditional operator
 .#trait                                                  trait operator
@@ -124,7 +124,33 @@ bit,
 bitfloor, bitceil, bitwidth, popcount,
 zerobits_l, zerobits_r, onebits_l, onebits_r,
 
-
+LIST OF OVERLOADABLE OPERATORS:
+__ASS, __REFASS,
+__ASSCAT,
+__ASSMOD,
+__ASSADD, __ASSSUB, __ASSMADD, __ASSMSUB,
+__ASSMUL, __ASSDIV, __ASSMMUL, __ASSMDIV,
+__ASSPOW,
+__ASSOR, __ASSNOR,
+__ASSAND, __ASSNAND,
+__ASSXOR,
+__ASSLSH, __ASSRSH, __ASSCLSH, __ASSCRSH,
+__EQ, __NEQ, __LES, __GRE, __LEQ, __GEQ,
+__CONT, __NCONT,
+__CAT,
+__MOD,
+__ADD, __SUB, __MADD, __MSUB, __FADD, __FSUB,
+__MUL, __DIV, __MMUL, __MDIV, __FMUL, __FDIV,
+__CROSS,
+__POW,
+__OR, __NOR,
+__AND, __NAND,
+__XOR,
+__LSH, __RSH, __CLSH, __CRSH,
+__CAST,
+__NOT, __MINUS,
+__INDEX, __SLICE, __LAST,
+__DEREF,
 
 
 SWITCH NOTATION
@@ -134,13 +160,15 @@ SWITCH NOTATION
 
 	} 2 :{
 		y = 2*x;
-		continue: 32;
+		continue: 1;
 	} else{
 		y = 32;
 	}
 
+SOME IMAGINARY EXPRESSIONS USED FOR TESTING THE PARSER
 (1 + 2) * 3 - -(4 / aaa);
 [1,2,3,4,5+3,7] * 32 >> a;
-f(1,2,3)(1,2)[23,3].arr.size.#dupsko / 32;
+f(1,2,3)(1,2)[23,3].arr.size.#non_trivial / 32;
 x == 32 ? (-True * 1.f)  (*a' - 32 / []Int);
 x == 32 ? (-True * 1.f)  (*a' - 32 / []Int{1,2*3 -a.arr[1,3], 8*7>>x});
+
