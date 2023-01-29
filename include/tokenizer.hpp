@@ -152,6 +152,7 @@ struct Node{
 	uint8_t capture_count;
 	union{
 		uint16_t index;
+		int16_t offset;
 		uint16_t count;
 		char character;
 		bool owning;

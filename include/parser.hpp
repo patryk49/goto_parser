@@ -15,7 +15,7 @@ uint8_t precs_right[] = {
 	 1,  1,  1,  1,  1,     // Proc, Struct, Enum, Bitfield, Expr,
 
 	 1,                     // Asm,
-	27, 29,                 // At, Const,
+	25, 27,                 // At, Const,
 
 // OPENING SYMBOLS
 	86, 86, 80, 86,         // OpenPar, OpenBracket, OpenBrace, OpenScope,
@@ -27,7 +27,7 @@ uint8_t precs_right[] = {
 	72, 72,                 // Span, View,
 	72, 72,                 // Minus, LogicNot,
 	72,                     // UnresolvedValue,
-	72, 72, 72,             // ArrayClass, ProcedureClass, ProcedureLiteral,
+	72, 72, 29,             // ArrayClass, ProcedureClass, ProcedureLiteral,
 	69,                     // Broadcast,
 
 // POSTFIX
@@ -44,17 +44,17 @@ uint8_t precs_right[] = {
 	12, 12, 12,             // Colon, DoubleColon, TripleColon,
 
 // ASSIGNS
-	28, 28, 28,     // Assign, AssignBytes, DestructuredAssign
-	28,             // ConcatenateAssign,
-	28,             // ModuloAssign,
-	28, 28, 28, 28, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
-	28, 28, 28, 28, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
-	28,             // PowerAssign,
-	28, 28,         // BitOrAssign, BitNorAssign,
-	28, 28,         // BitAndAssign, BitNandAssign,
-	28,             // BitXorAssign,
-	28, 28,         // LeftShiftAssign, RightShiftAssign,
-	28, 28,         // RotaryLeftShiftAssign, RotaryRightShiftAssign,
+	26, 26, 26,     // Assign, AssignBytes, DestructuredAssign
+	26,             // ConcatenateAssign,
+	26,             // ModuloAssign,
+	26, 26, 26, 26, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
+	25, 26, 26, 26, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
+	26,             // PowerAssign,
+	26, 26,         // BitOrAssign, BitNorAssign,
+	26, 26,         // BitAndAssign, BitNandAssign,
+	26,             // BitXorAssign,
+	26, 26,         // LeftShiftAssign, RightShiftAssign,
+	26, 26,         // RotaryLeftShiftAssign, RotaryRightShiftAssign,
 
 // BINARY
 	32,                     // Pipe,
@@ -94,7 +94,7 @@ uint8_t precs_left[] = {
 	 1,  1,  1,  1,  1,     // Proc, Struct, Enum, Bitfield, Expr,
 
 	 1,                     // Asm,
-	27, 29,                 // At, Const,
+	25, 27,                 // At, Const,
 
 // OPENING SYMBOLS
 	0, 0, 0, 0,            // OpenPar, OpenBracket, OpenBrace, OpenScope,
@@ -106,7 +106,7 @@ uint8_t precs_left[] = {
 	82, 82,                 // Span, View,
 	82, 82,                 // Minus, LogicNot,
 	82,                     // UnresolvedValue,
-	82, 82, 82,             // ArrayClass, ProcedureClass, ProcedureLiteral,
+	82, 82, 28,             // ArrayClass, ProcedureClass, ProcedureLiteral,
 	69,                     // Broadcast,
 
 // POSTFIX
@@ -123,17 +123,17 @@ uint8_t precs_left[] = {
 	12, 12, 12,             // Colon, DoubleColon, TripleColon,
 
 // ASSIGNS
-	28, 28, 28,     // Assign, AssignBytes, DestructuredAssign
-	28,             // ConcatenateAssign,
-	28,             // ModuloAssign,
-	28, 28, 28, 28, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
-	28, 28, 28, 28, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
-	28,             // PowerAssign,
-	28, 28,         // BitOrAssign, BitNorAssign,
-	28, 28,         // BitAndAssign, BitNandAssign,
-	28,             // BitXorAssign,
-	28, 28,         // LeftShiftAssign, RightShiftAssign,
-	28, 28,         // RotaryLeftShiftAssign, RotaryRightShiftAssign,
+	26, 26, 26,     // Assign, AssignBytes, DestructuredAssign
+	26,             // ConcatenateAssign,
+	26,             // ModuloAssign,
+	26, 26, 26, 26, // AddAssign, SubtractAssign, ModularAddAssign, ModularSubtractAssign, 
+	26, 26, 26, 26, // MultiplyAssign, DivideAssign, ModularMultiplyAssign, ModularDivideAssign,
+	26,             // PowerAssign,
+	26, 27,         // BitOrAssign, BitNorAssign,
+	26, 27,         // BitAndAssign, BitNandAssign,
+	26,             // BitXorAssign,
+	26, 26,         // LeftShiftAssign, RightShiftAssign,
+	26, 26,         // RotaryLeftShiftAssign, RotaryRightShiftAssign,
 
 // BINARY
 	68,                     // Pipe,

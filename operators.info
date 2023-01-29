@@ -38,7 +38,16 @@ PREFIX OPERATORS:
 [..]     [..]                                            primitive dynamic array
 -        !                                               minus, logic not
 @                                                        Broadcast
-(expression)                                             pharenthesis
+(expression)                                             parenthesis
+
+POSTFIX OPERATORS:
+.field     .[index]   .[#-index]                         field access, indexed field access, reverse indexed field access
+(args)     .(args)                                       call, get procedure
+[index]    [#-index]                                     access index, access reverse index
+[from..to] [from..]   [..to]    []                       get span
+?(on_true)(on_false)                                     conditional operator
+.#trait                                                  trait operator
+
 
 
 
@@ -49,14 +58,6 @@ T~v == T~%~v
 
 
 
-
-POSTFIX OPERATORS:
-.field     .[index]   .[#-index]                         field access, indexed field access, reverse indexed field access
-(args)     .(args)                                       call, get procedure
-[index]    [#-index]                                     access index, access reverse index
-[from..to] [from..]   [..to]    []                       get span
-?(on_true)(on_false)                                     conditional operator
-.#trait                                                  trait operator
 
 IMORTANT THINGS TO TAKE CARE OF:
 - assigning restricted pointer to another pointer makes previously restricted pointer
@@ -123,6 +124,10 @@ Min, Max, Bits,
 bit,
 bitfloor, bitceil, bitwidth, popcount,
 zerobits_l, zerobits_r, onebits_l, onebits_r,
+
+FLOATIONG POINT TYPE FIELDS:
+Min, Max, Epsilon, Inf, Qnan,
+MantissaBits, ExponentBits, ExponentBias,
 
 LIST OF OVERLOADABLE OPERATORS:
 __ASS, __REFASS,
