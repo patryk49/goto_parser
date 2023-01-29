@@ -158,18 +158,6 @@ __INDEX, __SLICE, __LAST,
 __DEREF,
 
 
-SWITCH NOTATION
-	if x == {
-	} 1 :{
-		y = 2*x;
-
-	} 2 :{
-		y = 2*x;
-		continue: 1;
-	} else{
-		y = 32;
-	}
-
 SOME IMAGINARY EXPRESSIONS USED FOR TESTING THE PARSER
 (1 + 2) * 3 - -(4 / aaa);
 [1,2,3,4,5+3,7] * 32 >> a;
