@@ -239,8 +239,6 @@ NodeArray parse_module(NodeArray tokens){
 
 		case Node_GetField:
 			curr.type = Node_EnumLiteral;
-			goto SimpleLiteral;
-
 		case Node_Identifier:
 		case Node_String:
 		case Node_Unresolved:{
@@ -327,11 +325,18 @@ NodeArray parse_module(NodeArray tokens){
 		switch (curr.type){
 		case Node_Span:
 		case Node_Dereference:
-		case Node_GetField:
 		SimplePostfixOperator:
 			*res_it = curr;
 			res_it += 1;
 			goto ExpectOperator;
+		
+		case Node_GetField:{
+			size_t size = datanode_count(curr.size);
+			memmove(res_it, it-1, (1+size)*sizeof(Node));
+			res_it += (1+size);
+			it += size;
+			goto ExpectOperator;
+		}
 		
 		case Node_Comma:
 			// TODO: Assert correct scope
