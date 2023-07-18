@@ -9,13 +9,13 @@
 
 #include "classes.h"
 
-static const char *const KeywordNames[] = {
+static const char const *KeywordNames[] = {
 // KEYWORDS
 	"if",       "else",      "while",       "for",
 	"defer",    "return",
 	"break",    "continue",  "goto",
-	"do",
 	"assert",
+	"do",
 	
 	"load",     "import",    "export",
 
@@ -47,20 +47,16 @@ static const char *const KeywordNames[] = {
 	"min", "max",  "clamp",
 };
 
-static const uint64_t KeywordNamesU64[] = {
-// KEYWORDS
-	0x6966000000000000, 0x656c736500000000, 0x7768696c65000000, 
-	0x6465666572000000, 0x72657475726e0000,
-	0x627265616b000000, 0x636f6e74696e7565, 0x676f746f00000000,
-	0x646f000000000000,
-	0x6173736572740000,
-	0x6c6f616400000000, 0x696d706f72740000, 0x6578706f72740000,
-	0x7374727563740000, 0x656e756d00000000, 0x6269746669656c64, 0x6578707200000000,
+static uint64_t KeywordNamesU64[SIZE(KeywordNames)];
 
-// DIRECTIVES
-
-};
-
+static void init_keyword_names(){
+	for (size_t i=0; i!=SIZE(KeywordNames); i+=1){
+		for (size_t j=0; j!=sizeof(uint64_t); j+=1){
+			if (KeywordNames[i][j] == '\0') break;
+			KeywordNamesU64[i] |= (uint64_t)KeywordNames[i][j] << j*8;
+		}
+	}
+}
 
 static bool is_valid_name_char(char c){
 	return (c>='a' && c<='z') || (c>='A' && c<='Z') || (c>='0' && c<='9') || c=='_';
@@ -312,6 +308,8 @@ void raise_error(const char *text, const char *msg, uint32_t pos){
 // array that stores names
 // takes null terminated string
 NodeArray make_tokens(const char *input){
+	init_keyword_names();
+
 	const char *text_begin = input;
 	NodeArray res = {NULL, 0, 0};
 	NodeArray_push(&res)->data.u64 = 0;

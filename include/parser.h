@@ -94,7 +94,7 @@ NodeArray parse_module(NodeArray tokens){
 			goto ExpectValue;
 		}
 	}
-
+	
 	ExpectValue:{
 		// Handle literals, parenthesis and prefix operators
 		Node curr = *it;
@@ -105,7 +105,8 @@ NodeArray parse_module(NodeArray tokens){
 				RETURN_ERROR("do keyword must be followed by opening brace", curr.pos);
 			it += 1;
 			curr.type = Node_S_DoBlock;
-			curr.count = 1;
+			*res_it = curr;
+			res_it += 1;
 			goto SimpleOpeningSymbol;
 
 		case Node_OpenBrace:     // Struct Literal
@@ -122,27 +123,27 @@ NodeArray parse_module(NodeArray tokens){
 			curr.type = Node_S_Parameters;
 			if (it->type == Node_ClosePar){
 				it += 1;
-				[[unlikely]] if (
-					it->type != Node_ProcedureClass   &&
-					it->type != Node_ProcedureLiteral &&
-					it->type != Node_OpenScope
-				) RETURN_ERROR(
-					"empty parenthesis must be followed by arrow symbol"
-					"to denote procedure class or literal",
-					curr.pos
-				);
 				curr.count = 0;
+				if (it->type == Node_ProcedureClass){
+					curr.type = it->type;
+					it += 1;
+					goto SimplePrefixOperator;
+				}
+				[[unlikely]] if (it->type != Node_OpenScope && it->type != Node_ProcedureLiteral)
+					RETURN_ERROR("empty parenthesis that are not a prameter list", curr.pos);
+				curr.type = Node_S_Procedure;
+				*res_it = curr;
+				res_it += 2;
 				if (it->type == Node_OpenScope){
 					it += 1;
-					curr.type = Node_S_Procedure;
-					*res_it = curr;
-					res_it += 2;
 					assert(opers_size+1 < SIZE(opers));
 					opers[opers_size].scope_info.position = res_it - tokens.ptr - 1;
 					goto SimpleOpeningSymbol;
 				}
-				curr.type = it->type;
 				it += 1;
+				// dont need to know position of this node so use it to store index
+				curr.type = Node_ProcedureLiteral;
+				curr.pos = res_it - tokens.ptr - 1;
 				goto SimplePrefixOperator;
 			}
 			curr.count = 1;
@@ -230,6 +231,7 @@ NodeArray parse_module(NodeArray tokens){
 		case Node_LogicNot:
 		case Node_D_Run:
 		case Node_ArrayClass:
+		case Node_K_Return:
 		SimplePrefixOperator:
 			assert(opers_size != SIZE(opers));
 			opers[opers_size] = curr; opers_size += 1;
@@ -280,15 +282,29 @@ NodeArray parse_module(NodeArray tokens){
 			curr.broadcast = true;
 		}
 
+		[[unlikely]] if (PrecsLeft[curr.type] == UINT8_MAX)
+			RETURN_ERROR("expected operator", curr.pos);
+
 		for (;;){
 			NodeType t = opers[opers_size-1].type;
 			if (PrecsRight[t] < PrecsLeft[curr.type]) break;
-			if (Node_Colon <= t && t <= Node_OptionalConstant){
-				size_t size = datanode_count(opers[opers_size-1].size);
-				memcpy(res_it+1, &opers[opers_size-size-1], size*sizeof(Node));
-				*res_it = opers[opers_size-1];
-				res_it += 1 + size;
-				opers_size -= size;
+			// below condition looks wierd for optimization perpuses
+			if (t == Node_ProcedureLiteral || (Node_Colon <= t && t <= Node_OptionalConstant)){
+				if (t == Node_ProcedureLiteral){
+					size_t skip_node_index = opers[opers_size-1].pos;
+					tokens.ptr[skip_node_index].type = Node_Skip;
+					tokens.ptr[skip_node_index].pos = res_it - tokens.ptr + 1;
+					(res_it+0)->type = Node_K_Return;
+					(res_it+0)->pos = curr.pos;
+					(res_it+1)->type = Node_CloseScope;
+					res_it += 2;
+				} else{
+					size_t size = datanode_count(opers[opers_size-1].size);
+					memcpy(res_it+1, &opers[opers_size-size-1], size*sizeof(Node));
+					*res_it = opers[opers_size-1];
+					res_it += 1 + size;
+					opers_size -= size;
+				}
 			} else{
 				*res_it = opers[opers_size-1];
 				res_it += 1;
@@ -398,25 +414,28 @@ NodeArray parse_module(NodeArray tokens){
 			opers_size -= 2;
 			scope_index = opers[opers_size].scope_info.index;
 			if (curr.type == Node_S_Parameters){
-				if (
-					it->type != Node_ProcedureClass   &&
-					it->type != Node_ProcedureLiteral &&
-					it->type != Node_OpenScope
-				){
+				if (it->type == Node_ProcedureClass){
+					curr.type = it->type;
+					it += 1;
+					opers[opers_size] = curr; opers_size += 1;
+					goto ExpectValue;
+				}
+				if (it->type != Node_OpenScope && it->type != Node_ProcedureLiteral){
 					[[unlikely]] if (curr.count != 1)
 						RETURN_ERROR("unexpected comma inside of parenthesis", curr.pos);
 					goto ExpectOperator;
 				}
+				curr.type = Node_S_Procedure;
+				*res_it = curr;
+				res_it += 2;
 				if (it->type == Node_OpenScope){
 					it += 1;
-					curr.type = Node_S_Procedure;
-					*res_it = curr;
-					res_it += 2;
 					opers[opers_size].scope_info.position = res_it - tokens.ptr - 1;
 					goto AddWithScope;
 				}
-				curr.type = it->type;
 				it += 1;
+				curr.type = Node_ProcedureLiteral;
+				curr.pos = res_it - tokens.ptr - 1;
 				opers[opers_size] = curr; opers_size += 1;
 				goto ExpectValue;
 			}

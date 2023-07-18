@@ -1,6 +1,6 @@
 // KEYWORDS
 K_If:1/1     K_Else:1/1     K_While:1/1     K_For:1/1
-K_Defer:1/1  K_Return:1/1
+K_Defer:1/1  K_Return:18/18
 K_Break:1/1  K_Continue:1/1 K_Goto:1/1
 K_Assert:1/1
 K_Do:1/1
@@ -35,14 +35,6 @@ ClosePar:15/15 CloseBracket:15/15 CloseBrace:15/15 CloseScope:15/15
 // SEPARATORS
 Comma:15/15      Semicolon:15/15  Terminator:15/15
 
-// PREFIX OPERATNS
-Pointer:72/82    BitNot:72/82
-Span:72/82
-Plus:72/82       Minus:72/82
-LogicNot:72/82
-Splat:82/22      Broadcast:72/82
-ArrayClass:72/82 ProcedureClass:72/82  ProcedureLiteral:28/27
-
 // POSTFIX OPERATIONS
 Dereference:84/84
 GetField:84/84
@@ -51,6 +43,17 @@ Call:84/0              Initialize:80/0
 GetProcedure:84/0      IndexAccess:84/0
 Conditional:32/0
 Trait:84/84
+
+// PREFIX OPERATNS
+Pointer:72/82    BitNot:72/82
+Span:72/82
+Plus:72/82       Minus:72/82
+LogicNot:72/82
+Splat:82/22      Broadcast:72/82
+ArrayClass:72/82 ProcedureClass:72/82
+
+// procedure literal acts slightly like a variable declaration
+ProcedureLiteral:28/18
 
 // VARIABLE DECLARATIONS
 Colon:18/18 Variable:18/18 Constant:18/18 OptionalConstant:18/18
