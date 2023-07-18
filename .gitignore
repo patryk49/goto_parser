@@ -1,0 +1,9 @@
+bin
+bin/*
+a.out
+nodegen
+ideas.txt
+include/eval.h
+include/new_parser.h.gch
+include/rd_parser.h
+

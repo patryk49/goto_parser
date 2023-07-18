@@ -1,0 +1,122 @@
+// KEYWORDS
+K_If:1/1     K_Else:1/1     K_While:1/1     K_For:1/1
+K_Defer:1/1  K_Return:1/1
+K_Break:1/1  K_Continue:1/1 K_Goto:1/1
+K_Assert:1/1
+K_Do:1/1
+K_Struct:1/1 K_Enum:1/1     K_Bitfield:1/1    K_Expr:1/1
+
+// DIRECTIVES
+D_Load:1/1       D_Import:1/1     D_Export:1/1
+D_If:1/1         D_For:1/1        D_Try:1/1
+D_Assert:1/1
+D_Class:1/1      D_Size:1/1       D_Alignof:1/1   D_Isconst:1/1
+D_Fieldnames:1/1 D_Filedcount:1/1
+D_At:1/1         D_Align:1/1
+D_Inline:1/1     D_Noinline:1/1   D_Hot:1/1     D_Cold:1/1
+D_Dsalloc:1/1    D_Cdsalloc:1/1   D_Bssalloc:1/1
+D_Run
+
+// OPENING SYMBOLS
+OpenPar:86/0          OpenBracket:86/0           OpenBrace:80/0   OpenScope:86/0
+ProcedureBody:86/0    DoBlock:86/0               TryExpression:86/0
+
+// SCOPE OPENINGS
+S_Global:90/0      S_Procedure:90/0     S_DoBlock:90/0 S_Struct:90/0
+S_Enum:90/0
+S_Initialize:90/0  S_StructLiteral:90/0
+S_Parameters:90/0  S_ArrayClass:90/0
+S_Call:90/0        S_GetPointer:90/0    S_Index:90/0   S_StructIndex:90/0
+S_Conditional:90/0 S_TryExpression:90/0
+
+// CLOSING SYMBOLS
+ClosePar:15/15 CloseBracket:15/15 CloseBrace:15/15 CloseScope:15/15
+
+// SEPARATORS
+Comma:15/15      Semicolon:15/15  Terminator:15/15
+
+// PREFIX OPERATNS
+Pointer:72/82    BitNot:72/82
+Span:72/82
+Plus:72/82       Minus:72/82
+LogicNot:72/82
+Splat:82/22      Broadcast:72/82
+ArrayClass:72/82 ProcedureClass:72/82  ProcedureLiteral:28/27
+
+// POSTFIX OPERATIONS
+Dereference:84/84
+GetField:84/84
+GetFieldIndexed:84/0
+Call:84/0              Initialize:80/0
+GetProcedure:84/0      IndexAccess:84/0
+Conditional:32/0
+Trait:84/84
+
+// VARIABLE DECLARATIONS
+Colon:18/18 Variable:18/18 Constant:18/18 OptionalConstant:18/18
+
+// BINARY OPERATIONS
+Assign:26/26 AssignBytes:26/26 DestructuredAssign:26/26
+
+ConcatenateAssign:26/26
+ModuloAssign:26/26
+AddAssign:26/26              SubtractAssign:26/26
+ModularAddAssign:26/26       ModularSubtractAssign:26/26
+MultiplyAssign:26/26         DivideAssign:26/26
+ModularMultiplyAssign:26/26  ModularDivideAssign:26/26
+PowerAssign:26/26
+BitOrAssign:26/26            BitNorAssign:26/26
+BitAndAssign:26/26           BitNandAssign:26/26
+BitXorAssign:26/26
+LeftShiftAssign:26/26        RightShiftAssign:26/26
+RotaryLeftShiftAssign:26/26  RotaryRightShiftAssign:26/26
+
+Pipe:32/68
+
+Concatenate:38/38
+Modulo:39/39
+Add:40/40              Subtract:40/40
+ModularAdd:40/40       ModularSubtract:40/40
+Multiply:41/41         Divide:41/41
+ModularMultiply:41/41  ModularDivide:41/41
+Power:46/45
+BitOr:50/50            BitNor:50/50
+BitAnd:51/51           BitNand:51/51
+BitXor:52/52
+LeftShift:53/53        RightShift:53/53
+RotaryLeftShift:53/53  RotaryRightShift:53/53
+
+Range:29/29
+LogicOr:32/32       LogicNor:32/32
+LogicAnd:33/33      LogicNand:33/33
+Equal:34/34         NotEqual:34/34
+Lesser:35/35        Greater:35/35
+LesserEqual:35/35   GreaterEqual:35/35
+Contains:36/36      DoesntContain:36/36
+FullAdd:40/40       FullSubtract:40/40
+FullMultiply:41/41  FullDivide:41/41
+CrossProduct:42/42
+Cast:71/70          Reinterpret:71/70
+
+// LITERALS
+Identifier
+Self
+Integer Unsigned Double Float
+Character String
+EnumLiteral
+ExprClass Lambda
+Unresolved
+ArrayLiteral StructLiteral
+
+// MODIFIERS
+Pound
+
+// BASIC CONSTANTS
+Class Null True False
+
+// BASIC COMPILE TIME INFORMATION
+GetClass GetIsconst
+GetBytes GetAlignment GetFieldcount
+
+// PARSING HELPERS
+Error Skip

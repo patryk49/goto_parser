@@ -1,0 +1,259 @@
+KEYWORDS:
+if, else, switch, loop, for                              conditional flow statements
+break, continue,                                         control flow statements
+do, try                                                  result giving scope, execute if possible
+load                                                     import source code file
+export                                                   export procedures or variables in binary format
+proc, struct, enum, bitfield, expr                       data type specifiers
+at                                                       specify place
+const                                                    execute following expression at build time
+Class, Null, True, False                                 type of type, null pointer, true value, false value
+
+INFIX OPERATORS BY PRECEDENCE:
+=   <>= +=  -=  +%= -%= *=  /=  *%= /%= %=  **=          (assigns)
+|=  |=  &=  ^=  <<= >>=                                  (assigns)
+|>                                                       pipe output
+||  !|                                                   logic or, logic nor
+&&  !&                                                   logic and, logic nand
+==  !=  <   >   <=  >=                                   equal, not equal, less, greater, less or equal, greater or equal
+@=  !@=                                                  is in, is not in
+<>                                                       concatenate
+%                                                        modulo
++   -   +%  -%  +&  -&                                   add, subtract, modular add, modular subtract
+*   /   *%  /%  *&  /&                                   multiply, divide, modular multiply, modular divide
+><                                                       cross product
+**                                                       power, 
+|   ^|                                                   bit or, bit nor
+&   ^&                                                   bit and, bit nand
+^                                                        bit xor
+<<  >>                                                   left shift, right shift
+~   ~%~                                                  cast, reinterpret
+
+PREFIX OPERATORS:
+*        !*                                              address of/pointer, unrestricted pointer 
+[]       [!]                                             span, unerstricted span 
+[size]   [[size]]                                        static array, finite array
++        -                                               plus, minus
+!        ^                                               logic not, bit not
+@                                                        broadcast
+(expression)                                             parenthesis
+
+
+
+POSTFIX OPERATORS:
+.field     .[index]   .[#-index]                         field access, indexed field access, reverse indexed field access
+(args)     .(args)                                       call, get procedure
+[index]    [#-index]                                     access index, access reverse index
+[from..to] [from..]   [..to]    []                       get span
+?(on_true)(on_false)                                     conditional operator
+.#trait                                                  trait operator
+
+Types of array class:
+[]         - span
+<>         - view (non mutable span)
+[!]        - restricted span
+<!>        - restricted view
+[:N]       - fixed array (has fixed size)
+[..N]      - finite array (can be resized, has fixed capacity)
+
+[,]        - 2d span
+<,>        - 2d view
+[!,]       - restricred 2d span
+<!,>       - restricted 2d view
+[:N,M]     - fixed matrix
+[..N,M]    - matrix with fixed columns
+[..N,]     - resizable matrix
+
+
+SEPARATORS:
+, is for:
+	Call, GetProcedure, ProcedureType, ProcedureLiteral,
+	ArrayLiteral, TupleLiteral, Initialization, IndexAccess,
+	K_Assert, D_Assert,
+
+
+
+
+
+
+
+
+
+
+if T {
+} == Int {
+	code 1;
+} == F32 {
+	code 2;
+} else{
+	code 3;
+}
+
+
+
+IMORTANT THINGS TO TAKE CARE OF:
+- assigning pointer to another pointer makes previously restricted pointer
+  impossible to dereference, the same for spans
+- things that are imported from module are internally identified not by local module name
+  but by name of the file that defines the module and module's parameters
+  (which should be encoded as module id)
+- make own calling convention that allows passing parameters by reference
+- if index md operator cannot be found try to use one dimensional index operator multiple times
+  md_arr[a,b,c] => md_arr[a][b][c];
+
+IMPLICIT CONVERSIONS:
+any pointer      -> byte pointer
+any pointer      -> void pointer
+void pointer     -> any pointer
+span             -> byte span
+Bool             -> unsigned
+Bool             -> integer
+enum             -> unsigned 
+enum             -> integer
+unsiged          -> other unsigned
+signed           -> other signed
+unsigned         -> signed
+64 bit float     -> 32 bit float
+fixed array      -> span
+finite array     -> span
+named tuple      -> struct with the same types and names
+unnamed tuple    -> struct with the same types
+generic enum     -> enum
+array of classes -> class
+
+
+
+
+BASIC CLASSES ORDERING:
+I8
+I16
+I32
+I64
+U8
+U16
+U32
+U64
+Bool
+Char
+class
+enum
+
+is_trivially_default_copy_constr
+
+BASIC CLASSES:
+I8 I16 I32 I64
+U8 U16 U32 U64
+F32 F64
+Bool Char
+enum
+
+BASIC INCOMPLETE CLASSES:
+*        !*       ^        !^
+[]       [!]      <>       <!>
+[N]      [[N]]    [..]
+struct   enum     bitfield expression
+
+BASIC ALIASES:
+Int, Num,
+Iptr, Uptr,
+
+INTEGRAL CLASS CONSTANTS:
+Min, Max, Bits,
+bit,
+bitfloor, bitceil, bitwidth, popcount,
+zerobits_l, zerobits_r, onebits_l, onebits_r,
+
+FLOATIONG CLASS FIELDS:
+Min, Max, Epsilon, Inf, Qnan,
+MantissaBits, ExponentBits, ExponentBias,
+
+LIST OF OVERLOADABLE OPERATORS:
+ASS, REFASS,
+ASSCAT,
+ASSMOD,
+ASSADD, ASSSUB, ASSMADD, ASSMSUB,
+ASSMUL, ASSDIV, ASSMMUL, ASSMDIV,
+ASSPOW,
+ASSOR, ASSNOR,
+ASSAND, ASSNAND,
+ASSXOR,
+ASSLSH, ASSRSH, ASSCLSH, ASSCRSH,
+EQ, NEQ, LES, GRE, LEQ, GEQ,
+CONT, NCONT,
+CAT,
+MOD,
+ADD, SUB, MADD, MSUB, FADD, FSUB,
+MUL, DIV, MMUL, MDIV, FMUL, FDIV,
+CROSS,
+POW,
+OR, NOR,
+AND, NAND,
+XOR,
+LSH, RSH, CLSH, CRSH,
+CAST,
+NOT, MINUS,
+ACCESS, SLICE, LAST,
+DEREF,
+
+
+SOME IMAGINARY EXPRESSIONS USED FOR TESTING THE PARSER
+(1 + 2) * 3 - -(4 / aaa);
+[1,2,3,4,5+3,7] * 32 >> a;
+f(1,2,3)(1,2)[23,3].arr.size.#non_trivial / 32;
+x == 32 ? (-True * 1.f)  (*a' - 32 / []Int);
+x == 32 ? (-True * 1.f)  (*a' - 32 / []Int{1,2*3 -a.arr[1,3], 8*7>>x});
+
+
+x := {Int, Float};
+
+x.1 = 32;
+y.2 = 123;
+x.3 = 456;
+
+SANDBOX FOR INVENTING SYNTAX:
+
+VTInterface :: class(VT :: Class){
+	*VT data;
+	
+	#for {name, index} :: VT {
+		// those are not varargs, the ... parameter's class cannot be infered from input
+		(name) :: (vt : *VT, args... : VT.[index].Args) => vt.[index](args ...);
+	}
+};
+
+
+DynArrayI :: class(T : Class){
+	push_back : (*Void, ^T) -> Bool;
+	pop_back : (*Void) -> T;
+	__INDEX : (*Void) -> *T;
+}
+
+inteface_vtables := HashMap(Class, HashMap(Class, *Interface, class(__ALLOCATOR))){ __ALLOCATOR };
+
+get_virtual_table(Interface :: Class, Arr :: Class) -> *Inteface {
+	vtables = interface_vtables[Interface];
+	assert vtables != Null;
+
+	match := vtables[Arr];
+	if match != Null return match';
+	
+	new_vtable : Interface;
+
+	for {name, index} :: Interface {
+		for fn, j :: Arr {
+			if fn == name { new_vtable.[index] = Arr.[j]; break 2; } 
+		}
+	}
+
+	vtables.add(Class, new_vtable);
+}
+
+
+
+
+
+
+
+
+
+
