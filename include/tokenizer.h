@@ -162,23 +162,6 @@ ParseCharacter:{
 		case 'v':
 			c = '\v';
 			break;
-		case '*':{
-				it += 1;
-				size_t depth = 1;
-				while (depth != 0){
-					if (it[0]=='\\' && it[1]=='*'){
-						depth += 1;
-						it += 1;
-					} else if (it[0]=='*' && it[1]=='\\'){
-						depth -= 1;
-						it += 1;
-					} else if (*it=='\'' || *it=='\"' || *it=='\0'){
-						break;
-					}
-					it += 1;
-				}
-			}
-			[[fallthrough]];
 		case '\n':
 		case '\v':
 		case '_':
@@ -404,7 +387,7 @@ NodeArray make_tokens(const char *input){
 			if (*input == '/'){
 				input += 1;
 				while (*input!='\0' && *input!='\n') input += 1;
-				goto NextToken;
+				goto SkipToken;
 			}
 			if (*input == '*'){
 				size_t depth = 1;
@@ -418,7 +401,7 @@ NodeArray make_tokens(const char *input){
 						depth -= 1;
 						if (depth == 0){
 							input += 1;
-							goto NextToken;
+							goto SkipToken;
 						}
 					} else if (input[0]=='/' && input[1]=='*'){
 						input += 1;
@@ -778,7 +761,7 @@ NodeArray make_tokens(const char *input){
 		case '\t':
 		case '\n':
 			input += 1;
-			goto NextToken;
+			goto SkipToken;
 		
 		case '\0':
 			curr.type = Node_Terminator;
@@ -830,6 +813,7 @@ NodeArray make_tokens(const char *input){
 		*NodeArray_push(&res) = curr;
 	NextToken:
 		res.ptr[iprev].pos = position;
+	SkipToken:
 		position += input - prev_input;
 	}
 #undef RETURN_ERROR

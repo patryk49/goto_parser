@@ -349,12 +349,8 @@ NodeArray parse_module(NodeArray tokens){
 			goto StatementLevel;
 
 		case Node_Conditional:
-			[[unlikely]] if (it->type != Node_OpenPar){
-				RETURN_ERROR(
-					"conditional operator must be followed by opening parenthesis",
-					curr.pos
-				);
-			}
+			[[unlikely]] if (it->type != Node_OpenPar)
+				RETURN_ERROR("conditional operator must be followed by opening parenthesis", curr.pos);
 			it += 1;
 			curr.type = Node_S_Conditional;
 			curr.count = 1;

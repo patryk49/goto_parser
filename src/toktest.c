@@ -58,7 +58,7 @@ void print_nodes(NodeArray nodes, const char *text, const char *prefix){
 			exit(1);
 		}
 		if (t == Node_Terminator) break;
-		printf("%s %10lu %s", prefix, n-1, NodeTypeNames[(size_t)t]);
+		printf("%s %10zu %8zu %s", prefix, n-1, (size_t)it.pos, NodeTypeNames[(size_t)t]);
 		switch (t){
 		case Node_String:
 			n += datanode_count(it.size);
