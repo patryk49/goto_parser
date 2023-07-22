@@ -53,7 +53,7 @@ Types of array class:
 <>         - view (non mutable span)
 [!]        - restricted span
 <!>        - restricted view
-[:N]       - fixed array (has fixed size)
+[N]        - fixed array (has fixed size)
 [..N]      - finite array (can be resized, has fixed capacity)
 
 [,]        - 2d span
@@ -159,25 +159,26 @@ Iptr, Uptr,
 
 INTEGRAL CLASS CONSTANTS:
 Min, Max, Bits,
-bit,
+getbit, setbit
 bitfloor, bitceil, bitwidth, popcount,
 zerobits_l, zerobits_r, onebits_l, onebits_r,
 
-FLOATIONG CLASS FIELDS:
+FLOATIONG POINT CLASS FIELDS:
 Min, Max, Epsilon, Inf, Qnan,
 MantissaBits, ExponentBits, ExponentBias,
+E, Pi, Sqrt2, Sqrt3, InvSqrt2, Ln2, Ln10, Log2
 
 LIST OF OVERLOADABLE OPERATORS:
-ASS, REFASS,
-ASSCAT,
-ASSMOD,
-ASSADD, ASSSUB, ASSMADD, ASSMSUB,
-ASSMUL, ASSDIV, ASSMMUL, ASSMDIV,
-ASSPOW,
-ASSOR, ASSNOR,
-ASSAND, ASSNAND,
-ASSXOR,
-ASSLSH, ASSRSH, ASSCLSH, ASSCRSH,
+ASSIGN, ASSIGN_RVAL,
+CAT_ASSIGN,
+MOD_ASSIGN,
+ADD_ASSIGN, SUB_ASSIGN, MADD_ASSIGN, MSUB_ASSIGN,
+MUL_ASSIGN, DIV_ASSIGN, MMUL_ASSIGN, MDIV_ASSIGN,
+POW_ASSIGN,
+OR_ASSIGN, NOR_ASSIGN,
+AND_ASSIGN, NAND_ASSIGN,
+XOR_ASSIGN,
+LSH_ASSIGN, RSH_ASSIGN, CLSH_ASSIGN, CRSH_ASSIGN,
 EQ, NEQ, LES, GRE, LEQ, GEQ,
 CONT, NCONT,
 CAT,
@@ -192,7 +193,7 @@ XOR,
 LSH, RSH, CLSH, CRSH,
 CAST,
 NOT, MINUS,
-ACCESS, SLICE, LAST,
+INDEX, SLICE, LAST,
 DEREF,
 
 

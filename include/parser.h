@@ -200,7 +200,7 @@ NodeArray parse_module(NodeArray tokens){
 				it += 1;
 				if (curr.type == Node_Add) curr.type = Node_Plus;
 				if (curr.type == Node_Subtract) curr.type = Node_Minus;
-				curr.broadcast = true;
+				curr.flags |= NodeFlag_Broadcasted;
 				goto SimplePrefixOperator;
 			}
 			if (it->type == Node_OpenPar || it->type == Node_Identifier){
@@ -271,13 +271,13 @@ NodeArray parse_module(NodeArray tokens){
 	ExpectOperator:{
 		Node curr = *it;
 		it += 1;
-
+		
 		[[unlikely]] if (curr.type == Node_Broadcast){
 			curr = *it;
 			it += 1;
 			[[unlikely]] if (Node_Concatenate>curr.type || curr.type>Node_Reinterpret)
 				RETURN_ERROR("operator cannot be broadcasted", curr.pos);
-			curr.broadcast = true;
+			curr.flags |= NodeFlag_Broadcasted;
 		}
 
 		[[unlikely]] if (PrecsLeft[curr.type] == UINT8_MAX)
@@ -364,7 +364,7 @@ NodeArray parse_module(NodeArray tokens){
 		case Node_OpenPar:
 			curr.type = Node_S_Call;
 			if (opers[opers_size-1].type == Node_Broadcast){
-				curr.broadcast = true;
+				curr.flags |= NodeFlag_Broadcasted;
 				opers_size -= 1;
 			}
 			if (it->type == Node_ClosePar){

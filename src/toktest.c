@@ -116,8 +116,6 @@ void print_nodes(NodeArray nodes, const char *text, const char *prefix){
 			}
 			break;
 		case Node_S_Call:
-			printf(": %u %s", (unsigned)it.count, it.broadcast?"~ Broadcasted":"");
-			break;
 		case Node_S_GetPointer:
 		case Node_S_Index:
 		case Node_S_StructIndex:
@@ -135,12 +133,20 @@ void print_nodes(NodeArray nodes, const char *text, const char *prefix){
 			printf(": %u", (unsigned)it.pos);
 			break;
 
-		default: 
-			if (it.broadcast && (
-				(Node_Concatenate <= it.type && it.type <= Node_Reinterpret) ||
-				(it.type == Node_BitNot || it.type == Node_LogicNot || it.type == Node_Minus)
-			)) printf(" ~ Broadcasted");
+		default:
 			break;
+		}
+		if (it.flags != 0){
+			putchar(' ');
+			putchar('|');
+			if ((it.flags >> 0) & 1) printf(" Broadcasted");
+			if ((it.flags >> 1) & 1) printf(" Infered");
+			if ((it.flags >> 2) & 1) printf(" DirectIdentifier");
+			if ((it.flags >> 3) & 1) printf(" HasReturnType");
+			if ((it.flags >> 4) & 1) printf(" 4");
+			if ((it.flags >> 5) & 1) printf(" 5");
+			if ((it.flags >> 6) & 1) printf(" 6");
+			if ((it.flags >> 7) & 1) printf(" 7");
 		}
 		putchar('\n');
 	}

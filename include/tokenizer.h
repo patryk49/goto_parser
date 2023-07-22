@@ -84,7 +84,7 @@ static bool is_keyword_statement(NodeType type){
 
 
 // PARSING HELPERS
-static const size_t MaxNameLengthNodes = 8;
+static const size_t MaxNameLengthNodes = 4;
 
 size_t get_identifier_name(Node *dest, const char **iter) {
 	const char *it = *iter;
@@ -94,7 +94,8 @@ size_t get_identifier_name(Node *dest, const char **iter) {
 		while (is_valid_name_char(it[count])) count += 1;
 	}
 	size_t required_node_count = datanode_count(count);
-	if (count != 0 && count <= 8*MaxNameLengthNodes){
+	if (required_node_count > MaxNameLengthNodes) return SIZE_MAX;
+	if (count != 0){
 		dest[required_node_count].data.u64 = 0;
 		memcpy(dest+1, *iter, count);
 		*iter = it + count;
@@ -251,7 +252,7 @@ static void print_codeline(const char *text, size_t position){
 			col = 0;
 		}
 	}
-	printf(" -> row: %lu, column: %lu\n", row, col);
+	fprintf(stderr, " -> row: %lu, column: %lu\n", row, col);
 
 	putchar('>');
 	putchar('\n');
@@ -281,7 +282,6 @@ void raise_error(const char *text, const char *msg, uint32_t pos){
 	print_codeline(text, pos);
 	exit(1);
 }
-
 
 
 
@@ -523,6 +523,8 @@ NodeArray make_tokens(const char *input){
 
 
 		case '(': input += 1;
+			// for later usege in determining of constant field invocation
+			if (res.ptr[iprev].type == Node_Identifier) curr.flags |= NodeFlag_DirectIdentifier;
 			curr.type = Node_OpenPar;
 			goto AddToken;
 		
@@ -600,7 +602,7 @@ NodeArray make_tokens(const char *input){
 			if (is_valid_first_name_char(*input)){
 				NodeArray_reserve(&res, res.size+1+MaxNameLengthNodes);
 				size_t s = get_identifier_name(res.ptr+res.size, &input);
-				if (s > MaxNameLengthNodes) RETURN_ERROR("name is too long", position);
+				if (s == SIZE_MAX) RETURN_ERROR("name is too long", position);
 				res.ptr[res.size].type = Node_Unresolved;
 				res.ptr[res.size].pos = position;
 				iprev = res.size;
@@ -673,7 +675,7 @@ NodeArray make_tokens(const char *input){
 				res.ptr[res.size] = curr;
 				size_t s = get_identifier_name(res.ptr+res.size, &input);
 				if (s == 0) RETURN_ERROR("missing field name", position);
-				if (s > MaxNameLengthNodes) RETURN_ERROR("field name is too long", position);
+				if (s == SIZE_MAX) RETURN_ERROR("field name is too long", position);
 				iprev = res.size;
 				res.size += 1 + s;
 				goto NextToken;
@@ -780,7 +782,7 @@ NodeArray make_tokens(const char *input){
 		default:{
 			NodeArray_reserve(&res, res.size+1+MaxNameLengthNodes);
 			size_t s = get_identifier_name(res.ptr+res.size, &input);
-			if (s > MaxNameLengthNodes) RETURN_ERROR("name is too long", position);
+			if (s == SIZE_MAX) RETURN_ERROR("name is too long", position);
 
 			if (s != 0){
 				if (s == 1){
