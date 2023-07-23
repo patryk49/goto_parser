@@ -18,7 +18,7 @@ D_Dsalloc:1/1    D_Cdsalloc:1/1   D_Bssalloc:1/1
 D_Run
 
 // OPENING SYMBOLS
-OpenPar:86/0          OpenBracket:86/0           OpenBrace:80/0   OpenScope:86/0
+OpenPar:86/0          OpenBracket:86/0           OpenBrace:80/0   OpenScope:28/0
 ProcedureBody:86/0    DoBlock:86/0               TryExpression:86/0
 
 // SCOPE OPENINGS
@@ -50,7 +50,7 @@ Span:72/82
 Plus:72/82       Minus:72/82
 LogicNot:72/82
 Splat:82/22      Broadcast:72/82
-ArrayClass:72/82 ProcedureClass:72/82
+ArrayClass:72/82 ProcedureClass:72/27
 
 // procedure literal acts slightly like a variable declaration
 ProcedureLiteral:28/18

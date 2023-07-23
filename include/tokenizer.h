@@ -74,7 +74,7 @@ static bool is_whitespace(char c){
 	return c==' ' || c=='\n' || c=='\t' || c=='\v';
 }
 
-static bool is_keyword_statement(NodeType type){
+static bool is_keyword_statement(enum NodeType type){
 	return Node_K_If <= type && type <= Node_K_Expr;
 }
 
@@ -329,7 +329,7 @@ NodeArray make_tokens(const char *input){
 				goto AddToken;
 			}
 			if (!is_whitespace(*(input-2))){
-				NodeType prev_type = res.ptr[iprev].type;
+				enum NodeType prev_type = res.ptr[iprev].type;
 				if (Node_Concatenate <= prev_type && prev_type <= Node_RotaryRightShift){
 					res.ptr[iprev].type = prev_type + (Node_AddAssign - Node_Add);
 					goto NextToken;
@@ -743,7 +743,7 @@ NodeArray make_tokens(const char *input){
 				scope_openings[scope_openings_size] = res.size;
 				scope_openings_size += 1;*/
 			}
-			NodeType prev_type = res.ptr[iprev].type;
+			enum NodeType prev_type = res.ptr[iprev].type;
 			if (Node_K_Break <= prev_type && prev_type <= Node_K_Goto){
 				/*res.ptr[res.size-1].index = add_name(
 					Span<const char>{(const char *)string.ptr+4, string.size-4},
@@ -795,6 +795,7 @@ NodeArray make_tokens(const char *input){
 						}
 				}
 				res.ptr[res.size].type = Node_Identifier;
+				// res.ptr[res.size].flags = 0;
 				iprev = res.size;
 				res.size += 1 + s;
 				goto NextToken;

@@ -151,6 +151,7 @@ NodeArray parse_module(NodeArray tokens){
 
 		case Node_OpenBracket:    // Array Literal
 			curr.type = Node_S_ArrayClass;
+			curr.count = 1;
 		SimpleOpeningSymbol:
 			assert(opers_size+1 < SIZE(opers));
 			opers[opers_size].scope_info.index = scope_index;
@@ -284,7 +285,7 @@ NodeArray parse_module(NodeArray tokens){
 			RETURN_ERROR("expected operator", curr.pos);
 
 		for (;;){
-			NodeType t = opers[opers_size-1].type;
+			enum NodeType t = opers[opers_size-1].type;
 			if (PrecsRight[t] < PrecsLeft[curr.type]) break;
 			// below condition looks wierd for optimization perpuses
 			if (t == Node_ProcedureLiteral || (Node_Colon <= t && t <= Node_OptionalConstant)){
@@ -398,6 +399,18 @@ NodeArray parse_module(NodeArray tokens){
 		case Node_OpenBracket:
 			curr.type = Node_S_Index;
 			curr.count = 1;
+			goto AddWithScope;
+
+		case Node_OpenScope:
+			if (opers[opers_size-1].type != Node_ProcedureClass)
+				RETURN_ERROR("procedure scope in unexpected place", curr.pos);
+			opers_size -= 1;
+			curr = opers[opers_size];
+			curr.type = Node_S_Procedure;
+			curr.flags |= NodeFlag_HasReturnType;
+			*res_it = curr;
+			res_it += 2;
+			opers[opers_size].scope_info.position = res_it - tokens.ptr - 1;
 			goto AddWithScope;
 		
 		case Node_GetFieldIndexed:
