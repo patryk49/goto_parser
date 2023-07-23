@@ -131,7 +131,7 @@ enum NodeFlags{
 	NodeFlag_Infered          = 1 << 1,
 	NodeFlag_DirectIdentifier = 1 << 2,
 	NodeFlag_HasReturnType    = 1 << 3,
-	NodeFlag_4                = 1 << 4,
+	NodeFlag_UsesShortSyntax  = 1 << 4,
 	NodeFlag_5                = 1 << 5,
 	NodeFlag_6                = 1 << 6,
 	NodeFlag_7                = 1 << 7

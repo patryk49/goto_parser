@@ -143,7 +143,7 @@ void print_nodes(NodeArray nodes, const char *text, const char *prefix){
 			if ((it.flags >> 1) & 1) printf(" Infered");
 			if ((it.flags >> 2) & 1) printf(" DirectIdentifier");
 			if ((it.flags >> 3) & 1) printf(" HasReturnType");
-			if ((it.flags >> 4) & 1) printf(" 4");
+			if ((it.flags >> 4) & 1) printf(" UsesShortSyntax");
 			if ((it.flags >> 5) & 1) printf(" 5");
 			if ((it.flags >> 6) & 1) printf(" 6");
 			if ((it.flags >> 7) & 1) printf(" 7");

@@ -37,17 +37,39 @@ enum InstrDataType{
 };
 
 
-enum IAttr{
-	IAttr_Static = 1 << 0
+typedef uint8_t InstrFlags;
+enum InstrFlags{
+	IFlag_Hot    = 1 <<  0,
+	IFlag_Cold   = 1 <<  1,
+	IFlag_Static = 1 <<  2,
+	IFlag_3      = 1 <<  3,
+	IFlag_4      = 1 <<  4,
+	IFlag_5      = 1 <<  5,
+	IFlag_6      = 1 <<  6,
+	IFlag_7      = 1 <<  7,
+	IFlag_8      = 1 <<  8,
+	IFlag_9      = 1 <<  9,
+	IFlag_10     = 1 << 10,
+	IFlag_11     = 1 << 11,
+	IFlag_12     = 1 << 12,
+	IFlag_13     = 1 << 13,
+	IFlag_14     = 1 << 14,
+	IFlag_15     = 1 << 15
 };
+
+
+typedef struct PhiLabel{
+	RegId begin;
+	RegId value;
+} PhiLabel;
 
 
 
 typedef struct InstrNode{
 	InstrType type;          // type of instruction
 	InstrDataType data_type; // type of data it returns
+	InstrFalgs flags;        // flags that don't fit in data union
 	RegId next;              // register id
-	InstrAttr *attr;         // instruction attoributes used for debug information
 
 	union{
 		struct IN_RawBuf{
@@ -67,12 +89,12 @@ typedef struct InstrNode{
 		} f64;
 
 		struct IN_Phi_Small{
-			RegId inputs[2];
+			PhiLabel inputs[2];
 		} phi_2;
 
 		struct IN_Phi_Big{
-			RegId *inputs;
-			uint32_t count;
+			PhiLabel *inputs;
+			size_t count;
 		} phi_n;
 	};
 };

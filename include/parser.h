@@ -292,6 +292,7 @@ NodeArray parse_module(NodeArray tokens){
 				if (t == Node_ProcedureLiteral){
 					size_t skip_node_index = opers[opers_size-1].pos;
 					tokens.ptr[skip_node_index].type = Node_Skip;
+					tokens.ptr[skip_node_index].flags |= NodeFlag_UsesShortSyntax;
 					tokens.ptr[skip_node_index].pos = res_it - tokens.ptr + 1;
 					(res_it+0)->type = Node_K_Return;
 					(res_it+0)->pos = curr.pos;
