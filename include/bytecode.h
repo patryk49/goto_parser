@@ -1,13 +1,25 @@
 #pragma once
 
-#include "parser.h"
+#include "utils.h"
 
 typedef uint32_t RegId;
 
 
 
+
+// Calling conventions for procedures
+typedef uint8_t CallingConvention;
+enum CallingConvention{
+	CC_Default = 0,
+	CC_C
+};
+
+
+
+
+
 typedef uint8_t InstrType;
-typedef enum InstrType{
+enum InstrType{
 	// basic data operatins
 	IT_Data,
 	IT_Load,
@@ -24,7 +36,7 @@ typedef enum InstrType{
 	IT_Sub,
 	IT_Mul,
 	IT_Div,
-} ;
+};
 
 
 typedef uint8_t InstrDataType;
@@ -68,7 +80,7 @@ typedef struct PhiLabel{
 typedef struct InstrNode{
 	InstrType type;          // type of instruction
 	InstrDataType data_type; // type of data it returns
-	InstrFalgs flags;        // flags that don't fit in data union
+	InstrFlags flags;        // flags that don't fit in data union
 	RegId next;              // register id
 
 	union{
@@ -97,4 +109,4 @@ typedef struct InstrNode{
 			size_t count;
 		} phi_n;
 	};
-};
+} InstrNode;

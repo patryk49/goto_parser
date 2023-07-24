@@ -9,7 +9,7 @@
 
 #include "classes.h"
 
-static const char const *KeywordNames[] = {
+static const char *KeywordNames[] = {
 // KEYWORDS
 	"if",       "else",      "while",       "for",
 	"defer",    "return",

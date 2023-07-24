@@ -3,6 +3,7 @@
 #include "utils.h"
 
 #include "node_types.h"
+#include "bytecode.h"
 
 
 
@@ -17,7 +18,7 @@ enum ClassType{
 	ClassType_Void,
 	ClassType_Class,
 	ClassType_InProgress, // type is specified before the assignment symbol
-	ClassType_Infered,    // type is infered from value
+	ClassType_UnknownClass, // type is infered from value
 	ClassType_Error,
 	ClassType_GenericEnum,
 
@@ -27,6 +28,9 @@ enum ClassType{
 	ClassType_Bool,
 	ClassType_Character,
 	ClassType_Float,
+
+	// Things that use are not really classes but they uses the same data structure
+	ClassType_InferedSize, // size that was infered 
 
 	// Place for adding costum non parametrized classes
 	
@@ -43,7 +47,10 @@ enum ClassType{
 	// Also the cannot be used recursively.
 	ClassType_FixedArray,
 	ClassType_FiniteArray,
-	ClassType_ProcPointer
+	ClassType_ProcPointer,
+	
+	// Non final classes
+	ClassType_FixedArray_UnknownSize,
 };
 
 
@@ -71,7 +78,7 @@ enum VarFlag{
 typedef struct VarFlags{
 	VarFlag flags;
 	uint8_t alignment;
-	uint8_t bit_set;     // maybe use it for knowing which fields/indexes are known at compile time
+	uint8_t bitset;      // maybe use it for knowing which fields/indexes are known at compile time
 	uint32_t name_index; // if its 0 variable has no name
 } VarFlags;
 
@@ -109,17 +116,18 @@ typedef struct DefinitionPath{
 
 
 typedef union Value{
-	const char *debug_text;
-	ClassId     class_id;
-	void       *data;
-	void       *pointer;
-	char        chars[8];
-	uint64_t    u64;
-	int64_t     i64;
-	float       f32;
-	double      f64;
-	uint32_t    rune;
-	bool        boolean;
+	const char     *debug_text;
+	ClassId         class_id;
+	struct PhiLabel ir;
+	void           *data;
+	void           *pointer;
+	char            chars[8];
+	uint64_t        u64;
+	int64_t         i64;
+	float           f32;
+	double          f64;
+	uint32_t        rune;
+	bool            boolean;
 } Value;
 
 
@@ -195,77 +203,15 @@ typedef struct Variable{
 
 
 
-typedef struct ModulePool{
-	size_t var_size;
-	size_t var_capacity;
-	ClassId *var_classes;
-	union{
-		Node **var_expressions;
-		Value *var_values;
-	};
-	VariableName *var_names;
-
-	// TODO: add additional actions, like run directives, asserts, module parameters
-} ModulePool;
-
-
-static bool pool_push_variable(ModulePool *pool, VariableName name, ClassId class_id, Node *node){
-	if (pool->var_size == pool->var_capacity){
-		size_t new_capacity = 2*pool->var_capacity;
-		VariableName *new_memory = realloc(
-			pool->var_names,
-			new_capacity*(sizeof(VariableName)+sizeof(ClassId)+sizeof(Node *))
-		);
-		if (new_memory == NULL) return true;
-		pool->var_capacity    = new_capacity;
-		pool->var_names       = new_memory;
-		pool->var_classes     = (ClassId *)(new_memory + new_capacity*sizeof(VariableName));
-		pool->var_expressions = (Node **)(new_memory + new_capacity*sizeof(ClassId));
-	}
-	size_t size = pool->var_size;
-	pool->var_names[size]       = name;
-	pool->var_classes[size]     = class_id;
-	pool->var_expressions[size] = node;
-	pool->var_size += 1;
-	return false;
-}
-
-
-// TEMPORARY MUDULE POOL
-ModulePool module_states[32];
-
-
-static bool class_compare(ClassId lhs, ClassId rhs){
-	if (lhs.type != rhs.type) return false;
-	if (lhs.prefixes != rhs.prefixes) return false;
-	if (lhs.type < ClassType_FixedArray)
-		return lhs.index==rhs.index;
-	// Handle non unique classes that canoot be compared just by ClassId.
-	assert(false && "Tried to compare non existant, non uniue class.");
-}
-
-
-
-
-
-// Calling conventions for procedures
-typedef uint8_t CallingConvention;
-enum CallingConvention{
-	CC_Default = 0,
-	CC_C
-};
-
-
-
 // structures that containt information abount non unique classes
 typedef struct ArrayClassInfo{
+	uint32_t size;
 	ClassId class_id;
-	size_t elem_count;
 } ArrayClassInfo;
 
 
 typedef struct TupleClassInfo{
-	size_t field_count;
+	uint32_t field_count;
 	ClassId class_ids[];
 } TupleClassInfo;
 
@@ -296,6 +242,7 @@ typedef struct ProcedureClassInfo{
 	Node *default_expressions[];
 } ProcedureClassInfo;
 
+
 typedef struct FieldHashElement{
 	uint32_t name_index;
 	uint16_t name_hash;
@@ -320,6 +267,116 @@ typedef struct StructClassInfo{
 } StructClassInfo;
 
 
+
+
+
+typedef struct GlobalInfo{
+	// unique classes's info
+	TupleClassInfo  *tuples;
+	StructClassInfo *structs;
+	
+	size_t struct_count;
+	size_t tuple_count;
+
+	// non unique classes's info
+	ArrayClassInfo  *fixed_arrays;
+	ArrayClassInfo  *finite_arrays;
+
+	size_t fixed_array_count;
+	size_t finite_array_count;
+
+	// TODO: add additional actions, like run directives, asserts, module parameters
+} GlobalInfo;
+
+
+/*
+static bool pool_push_variable(ModulePool *pool, VariableName name, ClassId class_id, Node *node){
+	if (pool->var_size == pool->var_capacity){
+		size_t new_capacity = 2*pool->var_capacity;
+		VariableName *new_memory = realloc(
+			pool->var_names,
+			new_capacity*(sizeof(VariableName)+sizeof(ClassId)+sizeof(Node *))
+		);
+		if (new_memory == NULL) return true;
+		pool->var_capacity    = new_capacity;
+		pool->var_names       = new_memory;
+		pool->var_classes     = (ClassId *)(new_memory + new_capacity*sizeof(VariableName));
+		pool->var_expressions = (Node **)(new_memory + new_capacity*sizeof(ClassId));
+	}
+	size_t size = pool->var_size;
+	pool->var_names[size]       = name;
+	pool->var_classes[size]     = class_id;
+	pool->var_expressions[size] = node;
+	pool->var_size += 1;
+	return false;
+}
+*/
+
+
+
+
+static bool class_compare(const GlobalInfo *ginfo, ClassId lhs, ClassId rhs){
+	if (lhs.type != rhs.type) return false;
+	if (lhs.prefixes != rhs.prefixes) return false;
+	if (lhs.type < ClassType_FixedArray) return lhs.index == rhs.index;
+	// Handle non unique classes that canoot be compared just by ClassId.
+	// Comparisons are tail recursive.
+	if (lhs.index == rhs.index) return true; // early escape
+	if (lhs.type == ClassType_FixedArray){
+		ArrayClassInfo lhs_info = ginfo->fixed_arrays[lhs.index];
+		ArrayClassInfo rhs_info = ginfo->fixed_arrays[rhs.index];
+		if (lhs_info.size != rhs_info.size) return false;
+		return class_compare(ginfo, lhs_info.class_id, rhs_info.class_id);
+	}
+	if (lhs.type == ClassType_FiniteArray){
+		ArrayClassInfo lhs_info = ginfo->finite_arrays[lhs.index];
+		ArrayClassInfo rhs_info = ginfo->finite_arrays[rhs.index];
+		if (lhs_info.size != rhs_info.size) return false;
+		return class_compare(ginfo, lhs_info.class_id, rhs_info.class_id);
+	}
+	assert(false && "Tried to compare non existant, non uniue class.");
+}
+
+
+static bool inferencing_class_compare(
+	const GlobalInfo *ginfo,
+	ClassId lhs,
+	ClassId rhs,
+	ClassId **infered
+){
+	if (rhs.type == ClassType_UnknownClass){
+		**infered = lhs;
+		*infered += 1;
+		return true;
+	}
+	if (lhs.prefixes != rhs.prefixes) return false;
+	if (lhs.type==ClassType_FixedArray && rhs.type==ClassType_FixedArray_UnknownSize){
+		**infered = (ClassId){
+			.type = ClassType_InferedSize,
+			.index = ginfo->fixed_arrays[lhs.index].size
+		};
+		*infered += 1;
+		return true;
+	}
+	if (lhs.type != rhs.type) return false;
+	if (lhs.type < ClassType_FixedArray) return lhs.index == rhs.index;
+	// Handle non unique classes that canoot be compared just by ClassId.
+	if (lhs.index == rhs.index) return true; // early escape
+	if (lhs.type == ClassType_FixedArray){
+		ArrayClassInfo lhs_info = ginfo->fixed_arrays[lhs.index];
+		ArrayClassInfo rhs_info = ginfo->fixed_arrays[rhs.index];
+		if (lhs_info.size != rhs_info.size) return false;
+		return inferencing_class_compare(ginfo, lhs_info.class_id, rhs_info.class_id, infered);
+	}
+	if (lhs.type == ClassType_FiniteArray){
+		ArrayClassInfo lhs_info = ginfo->finite_arrays[lhs.index];
+		ArrayClassInfo rhs_info = ginfo->finite_arrays[rhs.index];
+		if (lhs_info.size != rhs_info.size) return false;
+		return inferencing_class_compare(ginfo, lhs_info.class_id, rhs_info.class_id, infered);
+
+	}
+	assert(false && "Tried to compare non existant, non uniue class.");
+}
 
 
 
@@ -368,4 +425,11 @@ typedef struct VariableStack{
 	uint32_t size;
 	uint32_t capacity;
 } VariableStack;
+
+
+
+
+
+
+
 

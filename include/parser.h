@@ -35,7 +35,6 @@ NodeArray parse_module(NodeArray tokens){
 		tokens.size = UINT32_MAX;            \
 		return tokens;                       \
 	}
-	ModulePool pool = {0};
 
 	Node opers[256];
 	opers[0].type = Node_S_Global;
