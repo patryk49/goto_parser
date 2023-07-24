@@ -48,9 +48,6 @@ enum ClassType{
 	ClassType_FixedArray,
 	ClassType_FiniteArray,
 	ClassType_ProcPointer,
-	
-	// Non final classes
-	ClassType_FixedArray_UnknownSize,
 };
 
 
@@ -83,10 +80,40 @@ typedef struct VarFlags{
 } VarFlags;
 
 
+
+typedef uint8_t ClassPrefix;
+enum ClassPrefix{
+	// Tags
+	ClassPrefix_None              =  0,
+	ClassPrefix_Pointer           =  1,
+	ClassPrefix_Span              =  2,
+	ClassPrefix_3                 =  3,
+	ClassPrefix_4                 =  4,
+	ClassPrefix_5                 =  5,
+	ClassPrefix_6                 =  6,
+	ClassPrefix_7                 =  7,
+	ClassPrefix_8                 =  8,
+	ClassPrefix_9                 =  9,
+	ClassPrefix_10                = 10,
+	ClassPrefix_11                = 11,
+	ClassPrefix_12                = 12,
+	ClassPrefix_13                = 13,
+	ClassPrefix_14                = 14,
+	ClassPrefix_UnsizedFixedArray = 15,
+
+	// Flags
+	ClassPrefixFlag_Constant = 1 << 4,
+	ClassPrefixFlag_Restrict = 1 << 5,
+	ClassPrefixFlag_3        = 1 << 6,
+	ClassPrefixFlag_4        = 1 << 7
+};
+
+
+
 typedef struct ClassId{
-	ClassType type;        // class type
-	uint8_t   prefixes[3]; // 6*4 bits that represent [restrict | constant | /span/pointer//0]
-	uint32_t  index;       // class index
+	ClassType   type;         // class type
+	ClassPrefix prefixes[11]; // prefix is a parametrized class that doesn't require much space
+	uint32_t    index;        // class index
 } ClassId;
 
 
@@ -102,8 +129,10 @@ static bool is_simple_class(ClassId class_id){
 	return is_simple_class_type(class_id.type);
 }
 
-static size_t get_prefixes(ClassId class_id){
-	return (class_id.prefixes[0]<<16) | (class_id.prefixes[1]<<8) | (class_id.prefixes[2]<<0);
+static ClassId remove_class_prefix(ClassId class_id){
+	memmove(class_id.prefixes, class_id.prefixes+1, sizeof(class_id.prefixes)-1);
+	class_id.prefixes[sizeof(class_id.prefixes)-1] = 0;
+	return class_id;
 }
 
 
@@ -121,18 +150,18 @@ typedef struct DefinitionPath{
 
 
 typedef union Value{
-	const char     *debug_text;
-	ClassId         class_id;
-	struct PhiLabel ir;
-	void           *data;
-	void           *pointer;
-	char            chars[8];
-	uint64_t        u64;
-	int64_t         i64;
-	float           f32;
-	double          f64;
-	uint32_t        rune;
-	bool            boolean;
+	const char *debug_text;
+	ClassId     class_id;
+	PhiLabel    ir;
+	void       *data;
+	void       *pointer;
+	char        chars[16];
+	uint64_t    u64;
+	int64_t     i64;
+	float       f32;
+	double      f64;
+	uint32_t    rune;
+	bool        boolean;
 } Value;
 
 
@@ -322,7 +351,7 @@ static bool pool_push_variable(ModulePool *pool, VariableName name, ClassId clas
 
 static bool class_compare(const GlobalInfo *ginfo, ClassId lhs, ClassId rhs){
 	if (lhs.type != rhs.type) return false;
-	if (get_prefixes(lhs) != get_prefixes(rhs)) return false;
+	if (memcmp(lhs.prefixes, rhs.prefixes, sizeof(lhs.prefixes)) == 0) return false;
 	if (lhs.type < ClassType_FixedArray) return lhs.index == rhs.index;
 	// Handle non unique classes that canoot be compared just by ClassId.
 	// Comparisons are tail recursive.
@@ -343,7 +372,7 @@ static bool class_compare(const GlobalInfo *ginfo, ClassId lhs, ClassId rhs){
 }
 
 
-static bool inferencing_class_compare(
+static bool infrencing_class_compare(
 	const GlobalInfo *ginfo,
 	ClassId lhs,
 	ClassId rhs,
@@ -354,14 +383,15 @@ static bool inferencing_class_compare(
 		*infered += 1;
 		return true;
 	}
-	if (get_prefixes(lhs) != get_prefixes(rhs)) return false;
-	if (lhs.type==ClassType_FixedArray && rhs.type==ClassType_FixedArray_UnknownSize){
+	if (memcmp(lhs.prefixes, rhs.prefixes, sizeof(lhs.prefixes)) == 0) return false;
+	if (lhs.type==ClassType_FixedArray && rhs.prefixes[0]==ClassPrefix_UnsizedFixedArray){
 		**infered = (ClassId){
 			.type  = ClassType_InferedSize,
 			.index = ginfo->fixed_arrays[lhs.index].size
 		};
 		*infered += 1;
-		return true;
+		ArrayClassInfo lhs_info = ginfo->fixed_arrays[lhs.index];
+		return infrencing_class_compare(ginfo, lhs_info.class_id, remove_class_prefix(rhs), infered);
 	}
 	if (lhs.type != rhs.type) return false;
 	if (lhs.type < ClassType_FixedArray) return lhs.index == rhs.index;
@@ -371,13 +401,13 @@ static bool inferencing_class_compare(
 		ArrayClassInfo lhs_info = ginfo->fixed_arrays[lhs.index];
 		ArrayClassInfo rhs_info = ginfo->fixed_arrays[rhs.index];
 		if (lhs_info.size != rhs_info.size) return false;
-		return inferencing_class_compare(ginfo, lhs_info.class_id, rhs_info.class_id, infered);
+		return infrencing_class_compare(ginfo, lhs_info.class_id, rhs_info.class_id, infered);
 	}
 	if (lhs.type == ClassType_FiniteArray){
 		ArrayClassInfo lhs_info = ginfo->finite_arrays[lhs.index];
 		ArrayClassInfo rhs_info = ginfo->finite_arrays[rhs.index];
 		if (lhs_info.size != rhs_info.size) return false;
-		return inferencing_class_compare(ginfo, lhs_info.class_id, rhs_info.class_id, infered);
+		return infrencing_class_compare(ginfo, lhs_info.class_id, rhs_info.class_id, infered);
 
 	}
 	assert(false && "Tried to compare non existant, non uniue class.");
