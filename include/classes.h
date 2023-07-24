@@ -90,6 +90,7 @@ typedef struct ClassId{
 } ClassId;
 
 
+
 static bool is_simple_class_type(ClassType t){
 	return ClassType_Number <= t && t <= ClassType_Float;
 }
@@ -99,6 +100,10 @@ static bool is_simple_class(ClassId class_id){
 	if (class_id.prefixes[1] != 0) return false;
 	if (class_id.prefixes[2] != 0) return false;
 	return is_simple_class_type(class_id.type);
+}
+
+static size_t get_prefixes(ClassId class_id){
+	return (class_id.prefixes[0]<<16) | (class_id.prefixes[1]<<8) | (class_id.prefixes[2]<<0);
 }
 
 
@@ -317,7 +322,7 @@ static bool pool_push_variable(ModulePool *pool, VariableName name, ClassId clas
 
 static bool class_compare(const GlobalInfo *ginfo, ClassId lhs, ClassId rhs){
 	if (lhs.type != rhs.type) return false;
-	if (lhs.prefixes != rhs.prefixes) return false;
+	if (get_prefixes(lhs) != get_prefixes(rhs)) return false;
 	if (lhs.type < ClassType_FixedArray) return lhs.index == rhs.index;
 	// Handle non unique classes that canoot be compared just by ClassId.
 	// Comparisons are tail recursive.
@@ -349,10 +354,10 @@ static bool inferencing_class_compare(
 		*infered += 1;
 		return true;
 	}
-	if (lhs.prefixes != rhs.prefixes) return false;
+	if (get_prefixes(lhs) != get_prefixes(rhs)) return false;
 	if (lhs.type==ClassType_FixedArray && rhs.type==ClassType_FixedArray_UnknownSize){
 		**infered = (ClassId){
-			.type = ClassType_InferedSize,
+			.type  = ClassType_InferedSize,
 			.index = ginfo->fixed_arrays[lhs.index].size
 		};
 		*infered += 1;
