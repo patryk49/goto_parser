@@ -1,13 +1,15 @@
 KEYWORDS:
-if, else, switch, loop, for                              conditional flow statements
-break, continue,                                         control flow statements
+if, else, switch, for                                    conditional flow statements
+break, continue, goto                                    control flow statements
 do, try                                                  result giving scope, execute if possible
+proc, struct, enum,                                      data type specifiers
+
+DIRECTIVES:
 load                                                     import source code file
-export                                                   export procedures or variables in binary format
-proc, struct, enum, bitfield, expr                       data type specifiers
 at                                                       specify place
-const                                                    execute following expression at build time
-Class, Null, True, False                                 type of type, null pointer, true value, false value
+
+BUILTIN VARIABLES:
+Class, Null, True, False                                 class of class, null pointer, true value, false value
 
 INFIX OPERATORS BY PRECEDENCE:
 =   <>= +=  -=  +%= -%= *=  /=  *%= /%= %=  **=          (assigns)
@@ -30,39 +32,24 @@ INFIX OPERATORS BY PRECEDENCE:
 ~   ~%~                                                  cast, reinterpret
 
 PREFIX OPERATORS:
-*        !*                                              address of/pointer, unrestricted pointer 
-[]       [!]                                             span, unerstricted span 
-[size]   [[size]]                                        static array, finite array
-+        -                                               plus, minus
-!        ^                                               logic not, bit not
+*          ^                                             address of/pointer, const pointer 
+[]         <>                                            span, const span 
+[[stride]] <[stride]>                                    span with stride, const span with stride
+[size]                                                   fixed array
+[..]                                                     buffer
++          -                                             plus, minus
+!          ^                                             logic not, bit not
 @                                                        broadcast
-(expression)                                             parenthesis
-
+!* !^ ![] !<> ![[stride]] !<[stride]>                    simmilar to above, but may alias
+?^ ?<> ?<[stride]>                                       simmilar to above, but it keeps track of const qualifier
 
 
 POSTFIX OPERATORS:
-.field     .[index]   .[#-index]                         field access, indexed field access, reverse indexed field access
+.field     .[index]                                      field access, indexed field access, reverse indexed field access
 (args)     .(args)                                       call, get procedure
-[index]    [#-index]                                     access index, access reverse index
-[from..to] [from..]   [..to]    []                       get span
-?(on_true)(on_false)                                     conditional operator
-.#trait                                                  trait operator
-
-Types of array class:
-[]         - span
-<>         - view (non mutable span)
-[!]        - restricted span
-<!>        - restricted view
-[N]        - fixed array (has fixed size)
-[..N]      - finite array (can be resized, has fixed capacity)
-
-[,]        - 2d span
-<,>        - 2d view
-[!,]       - restricred 2d span
-<!,>       - restricted 2d view
-[:N,M]     - fixed matrix
-[..N,M]    - matrix with fixed columns
-[..N,]     - resizable matrix
+[indexes]                                                access index
+?(on_true)(on_false)                                     conditional expression
+#try(try_expression)(on_failrure)                        compile time try expression
 
 
 SEPARATORS:
@@ -73,10 +60,14 @@ SEPARATORS:
 
 
 
+^**^^*^*^Int -> ^*Void
+I^*^*^^**^   -> V*^
 
 
+^**^^*^*^Int -> ^*?
+I^*^*^^**^   -> ?*^
 
-
+^*Void -> ^**^^*^*^Int
 
 
 
@@ -92,35 +83,37 @@ if T {
 
 
 IMORTANT THINGS TO TAKE CARE OF:
-- assigning pointer to another pointer makes previously restricted pointer
-  impossible to dereference, the same for spans
 - things that are imported from module are internally identified not by local module name
   but by name of the file that defines the module and module's parameters
   (which should be encoded as module id)
-- make own calling convention that allows passing parameters by reference
-- if index md operator cannot be found try to use one dimensional index operator multiple times
-  md_arr[a,b,c] => md_arr[a][b][c];
 
 IMPLICIT CONVERSIONS:
-any pointer      -> byte pointer
+generic enum     -> enum                                     
+enum             -> unsigned                                 
+unsigned         -> signed                                   X
+unsigned         -> other unsigned                           X
+signed           -> other signed                             X
+Bool             -> unsigned                                 X
+Bool             -> integer                                  X
+64 bit float     -> 32 bit float                             X
+fixed array      -> const span with the same element class   X
+any class        -> const pointer to it                      X
+empty tuple      -> any fully specified class
+tuple            -> fixed array with matching classes        X
+tuple            -> struct with matching classes
+
+static span      -> fixed array                              x
+
+any pointer      -> void pointer                             X
+void pointer     -> any pointer
+pointer          -> const pointer                            X
+span             -> const span                               X
+
+NESTED IMPLICIT CONVERSIONS:
 any pointer      -> void pointer
 void pointer     -> any pointer
-span             -> byte span
-Bool             -> unsigned
-Bool             -> integer
-enum             -> unsigned 
-enum             -> integer
-unsiged          -> other unsigned
-signed           -> other signed
-unsigned         -> signed
-64 bit float     -> 32 bit float
-fixed array      -> span
-finite array     -> span
-named tuple      -> struct with the same types and names
-unnamed tuple    -> struct with the same types
-generic enum     -> enum
-array of classes -> class
-
+pointer          -> const pointer
+span             -> const span
 
 
 

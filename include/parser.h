@@ -291,8 +291,8 @@ NodeArray parse_module(NodeArray tokens){
 				if (t == Node_ProcedureLiteral){
 					size_t skip_node_index = opers[opers_size-1].pos;
 					tokens.ptr[skip_node_index].type = Node_Skip;
-					tokens.ptr[skip_node_index].flags |= NodeFlag_UsesShortSyntax;
 					tokens.ptr[skip_node_index].pos = res_it - tokens.ptr + 1;
+					tokens.ptr[skip_node_index-1].flags |= NodeFlag_UsesShortSyntax;
 					(res_it+0)->type = Node_K_Return;
 					(res_it+0)->pos = curr.pos;
 					(res_it+1)->type = Node_CloseScope;
@@ -312,9 +312,9 @@ NodeArray parse_module(NodeArray tokens){
 		}
 		
 		// if is binary operation
-		if (Node_Assign <= curr.type){
+		if (curr.type >= Node_Assign){
 			assert(opers_size != SIZE(opers));
-			opers[opers_size] = curr; opers_size += 1;;
+			opers[opers_size] = curr; opers_size += 1;
 			goto ExpectValue;
 		}
 
@@ -415,6 +415,7 @@ NodeArray parse_module(NodeArray tokens){
 		
 		case Node_GetFieldIndexed:
 			curr.type = Node_S_StructIndex;
+			curr.count = 1;
 		AddWithScope:
 			assert(opers_size+1 < SIZE(opers));
 			opers[opers_size].scope_info.index = scope_index;
@@ -514,7 +515,6 @@ NodeArray parse_module(NodeArray tokens){
 	}
 	assert(false && "something wierd happened");
 	return tokens;
-#undef PASS_OPERATORS_WITH_MORE_PRECEDENCE
 #undef RETURN_ERROR
 }
 

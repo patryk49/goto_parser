@@ -9,6 +9,7 @@
 
 #include "classes.h"
 
+
 static const char *KeywordNames[] = {
 // KEYWORDS
 	"if",       "else",      "while",       "for",
@@ -196,19 +197,18 @@ bool get_number_token_from_iterator(
 	if (c == '.') goto ParseFloat;
 
 	if (c == '0'){
-		*inp_iter += 1;
 		switch (**inp_iter){
 		case 'x':
 			int_base = 16;
-			*inp_iter += 1;
+			*inp_iter += 2;
 			break;
 		case 'o':
 			int_base = 8;
-			*inp_iter += 1;
+			*inp_iter += 2;
 			break;
 		case 'b':
 			int_base = 2;
-			*inp_iter += 1;
+			*inp_iter += 2;
 			break;
 		default: break;
 		}
@@ -794,8 +794,10 @@ NodeArray make_tokens(const char *input){
 							goto AddToken;
 						}
 				}
-				res.ptr[res.size].type = Node_Identifier;
-				// res.ptr[res.size].flags = 0;
+				res.ptr[res.size].type =  Node_Identifier;
+#ifdef CARE_ABOUT_VALGRIND
+				res.ptr[res.size].flags = 0;
+#endif
 				iprev = res.size;
 				res.size += 1 + s;
 				goto NextToken;
@@ -804,6 +806,9 @@ NodeArray make_tokens(const char *input){
 			if (is_number(*input)){
 				if (get_number_token_from_iterator(res.ptr+res.size, &input, position))
 					RETURN_ERROR("invalud number literal", position);
+#ifdef CARE_ABOUT_VALGRIND
+				res.ptr[res.size].flags = 0;
+#endif
 				iprev = res.size;
 				res.size += 2;
 				goto NextToken;

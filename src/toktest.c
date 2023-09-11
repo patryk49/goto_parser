@@ -37,6 +37,10 @@ int main(int argc, char **argv){
 	printf("reading time: %lf\n", (double)read_time/1000000.0);
 	printf("lexing time:  %lf\n", (double)tok_time/1000000.0);
 	printf("parsing time: %lf\n", (double)parse_time/1000000.0);
+	
+	free(text.ptr);
+	free(nodes.ptr);
+
 	return 0;
 }
 
