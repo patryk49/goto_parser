@@ -105,7 +105,7 @@ typedef struct IrNode{
 	InstrType type;          // type of instruction
 	InstrDataType data_type; // type of data it returns
 	InstrFlags flags;        // flags that don't fit in data union
-	uint8_t size;       // alignment of stored value
+	uint8_t size;
 	RegId next;              // register id
 
 	union{

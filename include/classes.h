@@ -420,8 +420,7 @@ static size_t match_classes(
 
 
 // does type checking with inferencing, implicit casting and constant propagation
-// the 'var' is modified to match the 'expected_class_id'
-// returns a compile time error information if such occured, else returns 0
+// returns a register id that contains the correct value
 static RegId match_argument(
 	IrProcedure *proc,       // ir procedure in which the matching happens
 	uint32_t *param_buffer,  // buffer for static parameters, that is filled when something
@@ -633,7 +632,6 @@ static RegId match_argument(
 				source+1, target+1,
 				reg_id
 			);
-			if (param_size_copy != *param_size) return REG_MISMATCH;
 			// handle singleton case
 			if (source_size == 1) return first_reg;
 			// create register that would contain the result, inside a temporary buffer
