@@ -49,7 +49,7 @@ POSTFIX OPERATORS:
 (args)     .(args)                                       call, get procedure
 [indexes]                                                access index
 ?(on_true)(on_false)                                     conditional expression
-#try(try_expression)(on_failrure)                        compile time try expression
+#try(try_expression)(on_failrule)                        compile time try expression
 
 
 SEPARATORS:
@@ -110,10 +110,10 @@ pointer          -> const pointer                            X
 span             -> const span                               X
 
 NESTED IMPLICIT CONVERSIONS:
-any pointer      -> void pointer
-void pointer     -> any pointer
-pointer          -> const pointer
-span             -> const span
+any pointer      -> void pointer                             X
+void pointer     -> any pointer                              X
+pointer          -> const pointer                            X
+span             -> const span                               X
 
 
 
@@ -139,12 +139,6 @@ U8 U16 U32 U64
 F32 F64
 Bool Char
 enum
-
-BASIC INCOMPLETE CLASSES:
-*        !*       ^        !^
-[]       [!]      <>       <!>
-[N]      [[N]]    [..]
-struct   enum     bitfield expression
 
 BASIC ALIASES:
 Int, Num,

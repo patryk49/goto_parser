@@ -306,7 +306,9 @@ NodeArray make_tokens(const char *input){
 }
 
 	uint32_t scope_openings[32];
+	uint32_t paren_openings[32];
 	size_t scope_openings_size = 0;
+	size_t paren_openings_size = 0;
 
 	Node curr;
 	size_t iprev = 0;
@@ -324,9 +326,14 @@ NodeArray make_tokens(const char *input){
 				goto AddToken;
 			}
 			if (*input == '>'){
+				[[unlikely]] if (res.ptr[iprev].type != Node_ClosePar)
+					RETURN_ERROR("expected parameter list before \'=>\' symbol", position);
 				input += 1;
-				curr.type = Node_ProcedureLiteral;
-				goto AddToken;
+				// paren_openings_size was already decreased while lexing the ')' symbol
+				res.ptr[paren_openings[paren_openings_size]].type = Node_OpenParams;
+				res.size += 2;
+				NodeArray_reserve(&res, res.size);
+				goto SkipToken;
 			}
 			if (!is_whitespace(*(input-2))){
 				enum NodeType prev_type = res.ptr[iprev].type;
@@ -509,10 +516,6 @@ NodeArray make_tokens(const char *input){
 			} else if (*input == '&'){
 				curr.type = Node_LogicNand;
 				input += 1;
-			} else if (*input == '*'){
-				curr.type = Node_Pointer;
-				curr.owning = true;
-				input += 1;
 			} else if (*input == '@' && *(input+1) == '='){
 				curr.type = Node_DoesntContain;
 				input += 2;
@@ -523,6 +526,8 @@ NodeArray make_tokens(const char *input){
 
 
 		case '(': input += 1;
+			paren_openings[paren_openings_size] = res.size;
+			paren_openings_size += 1;
 			// for later usege in determining of constant field invocation
 			if (res.ptr[iprev].type == Node_Identifier) curr.flags |= NodeFlag_DirectIdentifier;
 			curr.type = Node_OpenPar;
@@ -530,6 +535,9 @@ NodeArray make_tokens(const char *input){
 		
 
 		case ')': input += 1;
+			[[unlikely]] if (paren_openings_size == 0)
+				RETURN_ERROR("missing opening parenthesis", position);
+			paren_openings_size -= 1;
 			curr.type = Node_ClosePar;
 			goto AddToken;
 		
@@ -554,10 +562,6 @@ NodeArray make_tokens(const char *input){
 			if (*input == ']'){
 				input += 1;
 				curr.type = Node_Span;
-			} else if (*input == '!' && *(input+1) == ']'){
-				input += 2;
-				curr.type = Node_Span;
-				curr.owning = true;
 			} else{
 				curr.type = Node_OpenBracket;
 			}
@@ -597,19 +601,15 @@ NodeArray make_tokens(const char *input){
 
 
 		case '?': input += 1;
-			// TODO: add ?^Name syntax for generic parameter wiht automatic selection of
-			// how it is passed.
-			if (is_valid_first_name_char(*input)){
-				NodeArray_reserve(&res, res.size+1+MaxNameLengthNodes);
-				size_t s = get_identifier_name(res.ptr+res.size, &input);
-				if (s == SIZE_MAX) RETURN_ERROR("name is too long", position);
-				res.ptr[res.size].type = Node_Unresolved;
-				res.ptr[res.size].pos = position;
-				iprev = res.size;
-				res.size += 1 + s;
-				goto NextToken;
+			if (*input == '^'){
+				input += 1;
+				curr.type = Node_InferedPointer;
+			} else if (*input == '<' && *(input+1) == '>'){
+				input += 2;
+				curr.type = Node_InferedSpan;
+			} else{
+				curr.type = Node_Conditional;
 			}
-			curr.type = Node_Conditional;
 			goto AddToken;
 
 
@@ -618,10 +618,6 @@ NodeArray make_tokens(const char *input){
 			if (*input == ':'){
 				curr.type = Node_Constant;
 				input += 1;
-				if (*input == ':'){
-					curr.type = Node_OptionalConstant;
-					input += 1;
-				}
 			} else if (*input == '='){
 				curr.type = Node_Variable;
 				input += 1;
@@ -667,10 +663,6 @@ NodeArray make_tokens(const char *input){
 				goto NextToken;
 			} else{
 				curr.type = Node_GetField;
-				if (*input == '>'){
-					input += 1;
-					curr.type = Node_Trait;
-				}
 				NodeArray_reserve(&res, res.size+1+MaxNameLengthNodes);
 				res.ptr[res.size] = curr;
 				size_t s = get_identifier_name(res.ptr+res.size, &input);
@@ -805,7 +797,7 @@ NodeArray make_tokens(const char *input){
 			input -= s;
 			if (is_number(*input)){
 				if (get_number_token_from_iterator(res.ptr+res.size, &input, position))
-					RETURN_ERROR("invalud number literal", position);
+					RETURN_ERROR("invalid number literal", position);
 #ifdef CARE_ABOUT_VALGRIND
 				res.ptr[res.size].flags = 0;
 #endif

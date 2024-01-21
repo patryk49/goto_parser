@@ -65,6 +65,7 @@ void print_nodes(NodeArray nodes, const char *text, const char *prefix){
 		printf("%s %10zu %8zu %s", prefix, n-1, (size_t)it.pos, NodeTypeNames[(size_t)t]);
 		switch (t){
 		case Node_String:
+		case Node_Identifier:
 			n += datanode_count(it.size);
 			printf(": \"");
 			for (size_t i=0; i!=it.size; i+=1)
@@ -101,40 +102,29 @@ void print_nodes(NodeArray nodes, const char *text, const char *prefix){
 				printf(": %u", it.index);
 			}
 			break;
-		case Node_Identifier:
 		case Node_Unresolved:
 		case Node_GetField:
 		case Node_EnumLiteral:
-		case Node_Trait:
 		case Node_Colon:
 		case Node_Variable:
 		case Node_Constant:
-		case Node_OptionalConstant:
-			if (it.size == UINT16_MAX){ 
-				printf(": ---");
-			} else{
-				n += datanode_count(it.size);
-				printf(": ");
-				for (size_t i=0; i!=it.size; i+=1)
-					putchar(((const char *)data)[i]);
-			}
-			break;
 		case Node_S_Call:
 		case Node_S_GetPointer:
 		case Node_S_Index:
 		case Node_S_StructIndex:
-		case Node_S_Initialize:
+		case Node_Initialize:
 		case Node_S_ArrayClass:
-		case Node_S_StructLiteral:
+		case Node_StructLiteral:
 		case Node_S_Procedure:
 		case Node_ArrayClass:
 		case Node_ProcedureLiteral:
 		case Node_ProcedureClass:
+		case Node_OpenParams:
 			printf(": %u", (unsigned)it.count);
 			break;
 		
 		case Node_Skip:
-			printf(": %u", (unsigned)it.pos);
+			printf(": %u", (unsigned)it.size);
 			break;
 
 		default:

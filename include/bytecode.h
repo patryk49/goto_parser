@@ -3,9 +3,9 @@
 #include "utils.h"
 
 typedef uint32_t RegId;
-#define REG_MISMATCH (UINT32_MAX - 0) // indicates type mismatch
-#define REG_OOM      (UINT32_MAX - 1) // indicates faild memory allocation
-#define REG_VOID     (UINT32_MAX - 9) // means that there's no need for register
+#define REG_MISMATCH      (UINT32_MAX - 0) // indicates type mismatch
+#define REG_OOM           (UINT32_MAX - 1) // indicates faild memory allocation
+#define REG_VOID          (UINT32_MAX - 9) // means that there's no need for register
 
 #define STATIC_PARAMS_MAX_SIZE 32
 
@@ -37,14 +37,11 @@ enum InstrType{
 	IT_Memcmp,
 
 	// Register Operations
-	IT_Pack2,
-	IT_Pack3,
-	IT_Pack4,
-	IT_PackN,
+	IT_Extract,
+	IT_Pack,
 
 	// Control Flow
 	IT_Goto,
-	IT_Call,
 	IT_Return,
 	
 	// Porcedures
@@ -73,7 +70,7 @@ enum InstrDataType{
 	IDT_Raw,
 	IDT_B8, IDT_B16, IDT_B32, IDT_B64,
 	IDT_Ptr,
-	IDT_F32, IDT_F64
+	IDT_F32, IDT_F64,
 	
 	// data that is not stored dorectly in the node
 	IDT_Indirect, // used only for data nodes
@@ -123,7 +120,7 @@ typedef struct IrNode{
 		} store;
 		
 		struct IN_Push{
-			RegId src;
+			RegId source;
 			size_t alignment;
 		} push;
 		
@@ -152,17 +149,23 @@ typedef struct IrNode{
 		float    f32;
 		double   f64;
 		
+		struct IN_Extract{
+			RegId source;
+			uint32_t index;
+		} extract;
+		
 		struct IN_Pack{
-			RegId sources[4];
+			uint32_t size;
+			RegId sources[3];
 		} pack;
 
-		struct IN_PhiBig{
+		struct IN_Phi{
 			PhiLabel inputs[2];
 		} phi_big;
 		
 		struct IN_UnaryOp{
 			RegId arg;
-		} binary_op;
+		} unary_op;
 
 		struct IN_BinaryOp{
 			RegId lhs;
@@ -189,8 +192,8 @@ static RegId ir_add_register(IrProcedure *proc, IrNode node){
 	RegId result = proc->reg_size;
 	
 	if (proc->reg_size == proc->reg_capacity){
-		IrNode *new_regs = realloc(2*proc->reg_size*sizeof(IrNode));
-		if (new_regs == NULL) return REG_ERROR;
+		IrNode *new_regs = realloc(proc->regs, 2*proc->reg_size*sizeof(IrNode));
+		if (new_regs == NULL) return REG_OOM;
 		proc->regs = new_regs;
 		proc->reg_capacity = 2*proc->reg_size;
 	}
@@ -205,8 +208,8 @@ static RegId ir_alloc_register(IrProcedure *proc, size_t size){
 	size_t required_size = proc->reg_size + size;
 
 	if (required_size > proc->reg_capacity){
-		IrNode *new_regs = realloc(2*required_size*sizeof(IrNode));
-		if (new_regs == NULL) return REG_ERROR;
+		IrNode *new_regs = realloc(proc->regs, 2*required_size*sizeof(IrNode));
+		if (new_regs == NULL) return REG_OOM;
 		proc->regs = new_regs;
 		proc->reg_capacity = 2*required_size;
 	}

@@ -47,7 +47,7 @@ enum ClassType{
 	ClassType_Span,
 	ClassType_SpanWithStride,
 	ClassType_Buffer,
-	ClassType_FixedArray,
+	ClassType_Array,
 	ClassType_NumberRange,
 
 // NON TERMINAL CLASS TYPES WITH MULTIPLE ARGUMENTS:
@@ -71,7 +71,7 @@ enum ClassFlags{
 
 typedef struct ClassNode{
 	uint32_t data;
-} Class;
+} ClassNode;
 
 #define CLASS_VOID ((Class){0})
 #define CLASS_U8 ((Class){0x00000804})
@@ -94,51 +94,13 @@ static void class_setflags(ClassNode *c, ClassFlags flags){
 static void class_addflags(ClassNode *c, ClassFlags flags){
 	c->data |= flags << 8;
 }
-static void class_clearflags(Class *c, ClassFlags flags){
+static void class_clearflags(ClassNode *c, ClassFlags flags){
 	c->data &= ~(flags << 8);
 }
 
 
-union Class{
-	ClassNode data[4];
-	struct{
-		ClassNode data_0;
-		uint32_t capacity;
-		Class *ptr;
-	};
-};
-typedef union Class Class;
-
-static ClassNode *class_data(Class *bufer){
-	return buffer->data[0].data == ClassType_Indirection ? buffer->ptr : buffer->data;
-}
-
-static size_t class_capacity(const Class *buffer){
-	return buffer->data[0].data == ClassType_Indirection ? buffer->capacity : 4;
-}
-
-// returns new pointer to data
-static ClassNode *class_reserve(Class *buffer, size_t size){
-	size_t capacity = class_capacity(buffer);
-	if (size <= capacity) return class_data(buffer);
-	size_t new_capacity = 2*capacity;
-	while (new_capacity < size) new_capacity *= 2;
-	if (capacity <= 4){
-		ClassNode *new_ptr = malloc(new_capacity*sizeof(ClassNode));
-		if (new_ptr == NULL) return NULL;
-		memcpy(new_ptr, buffer->data, 4*sizeof(ClassNode));
-		buffer->data[0] = ClassType_Indirection;
-	} else{
-		ClassNode *new_ptr = realloc(buffer->ptr, new_capacity*sizeof(ClassNode));
-		if (new_ptr == NULL) return NULL;
-	}
-	buffer->ptr = new_ptr;
-	buffer->capacity = new_capacity;
-	return new_ptr;
-}
-
-typedef uint16_t VarFlag;
-enum VarFlag{
+typedef uint16_t VarFlags;
+enum VarFlags{
 	VarFlag_Static       = 1 <<  0, // is a compile time variable
 	VarFlag_Known        = 1 <<  1, // is known at compile time
 	VarFlag_Lvalue       = 1 <<  2, // is assignable
@@ -171,7 +133,6 @@ typedef struct DefinitionPath{
 
 
 typedef union Value{
-	Class       class_buf;
 	PhiLabel    ir;
 	struct{
 		RegId reg_id;
@@ -199,8 +160,8 @@ enum NodeFlags{
 	NodeFlag_DirectIdentifier = 1 << 2,
 	NodeFlag_HasReturnType    = 1 << 3,
 	NodeFlag_UsesShortSyntax  = 1 << 4,
-	NodeFlag_5                = 1 << 5,
-	NodeFlag_6                = 1 << 6,
+	NodeFlag_Constant         = 1 << 5,
+	NodeFlag_Aliasing         = 1 << 6,
 	NodeFlag_7                = 1 << 7
 };
 
@@ -219,7 +180,6 @@ typedef struct Node{ union{
 			int16_t   offset;
 			uint16_t  count;
 			char      character;
-			bool      owning;
 		};
 		uint32_t pos;
 	};
@@ -251,8 +211,15 @@ static VariableName name_from_node(const struct Node *node){
 
 
 typedef struct Variable{
-	Class var_class;
+	union{
+		ClassNode class_data[4];
+		struct{
+			ClassNode *class_ptr;
+			size_t *class_size;
+		};
+	};
 	uint32_t node_index;
+	RegId value;
 	VarFlags flags;
 	uint32_t bitset; // Not used right now. Can be changed to something else it the future.
 } Variable;
@@ -263,12 +230,24 @@ typedef struct Variable{
 
 
 typedef struct ParamInfo{
-	uint32_t offsets[];
-	uint32_t [parameters];
+	uint32_t offsets[1];
+	uint32_t parameters[1];
 } ParamInfo;
 
 // structures that containt information abount non unique classes
 typedef struct ProcedureClassInfo{
+	// What is required:
+	// - procedure's path in source code
+	// - parameter names
+	// - parameter classes
+	// - parameter staic qualifiers
+	// - default argument classes and values
+	// - result class
+	// - result name that can be empty string in case of no result name
+	// - procedure flags
+	// - procedure body in form of AST nodes
+	// - classes of static parameters
+	// - a mapping from value of static parameters to ir procedures
 	uint8_t arg_count;
 	uint8_t default_count;
 	uint8_t infered_count;
@@ -276,8 +255,8 @@ typedef struct ProcedureClassInfo{
 	uint8_t is_arg_static;
 	uint8_t is_arg_optionally_static;
 
-	ClassId arg_class_ids[MAX_PARAM_COUNT];
-	ClassId return_class_ids;
+	ClassNode *arg_class_ids[MAX_PARAM_COUNT];
+	ClassNode *return_class_ids;
 	
 	Node *body;
 	Variable *defaults;
@@ -285,6 +264,7 @@ typedef struct ProcedureClassInfo{
 	// array of compile time parameters that match specific implementation
 	struct IrProcedure *implementations;
 } ProcedureClassInfo;
+
 
 
 typedef struct FieldHashElement{
@@ -298,6 +278,16 @@ typedef struct FieldName{
 } FieldName;
 
 typedef struct StructClassInfo{
+	// What is required:
+	// - structure's path in source code
+	// - bytesize
+	// - alignement
+	// - field names
+	// - field classes
+	// - starting index of static fields
+	// - static field values
+	// - non static field offsets
+	// - mapping from filed name to variable representing a accessed field
 	uint16_t field_count;
 	uint16_t static_field_count;
 
@@ -310,9 +300,9 @@ typedef struct StructClassInfo{
 
 //	FieldHashElement *fileds_ht;
 //	FieldHashElement *statics_ht;
-	Class classes[4];
-	IrNode static_values[];
-	uint32_t offsets[];
+	ClassNode *classes[4];
+	IrNode static_values[4];
+	uint32_t offsets[4];
 	FieldName names;
 } StructClassInfo;
 
@@ -320,7 +310,6 @@ typedef struct StructClassInfo{
 typedef struct GlobalInfo{
 	ProcedureClassInfo *procedure_info;
 	StructClassInfo    *struct_info;
-	EnumClassInfo      *enum_info;
 
 	size_t              procedure_count;
 	size_t              struct_count;
@@ -352,70 +341,122 @@ static bool pool_push_variable(ModulePool *pool, VariableName name, ClassId clas
 */
 
 
-
+/*
 // this procedure moves pointer before serialized class definition it's currently pointing to
-static size_t treewalk_class(Class **const source_ptr){
+static void treewalk_class(ClassNode **const source_ptr){
 	const Class *source = *source_ptr;
 	*source_ptr = source - 1;
 	enum ClassType source_type = class_type(*source_ptr);
-	if (source_type < ClassType_Pointer) return 0;
+	if (source_type < ClassType_Pointer) return;
 	switch (source_type){
 	case ClassType_Pointer:
 	case ClassType_Span:
 	case ClassType_FixedArray:
 	case ClassType_FiniteArray:
 		treewalk_class(source_ptr);
-		return 0;
+		return;
 	case ClassType_Tuple:
 		for (size_t i=0; i!=class_amount(source); i+=1) treewalk_class(source_ptr);
-		return 0;
+		return;
 	default: break;
 	}
 	assert(false && "missing case");
 }
+*/
 
 // procedure that advances pointers and modifies source so that it matches target
-static size_t match_classes(
-	Class *source_buf,
-	Class target_buf,
-	size_t *source_index,
-	size_t *target_index
+static RegId match_classes(
+	uint32_t *param_buffer,  // buffer for static parameters, that is filled when something
+	size_t *param_index,     //   get infered
+	const ClassNode *source, // source class
+	const ClassNode *target  // target class
 ){
 	enum ClassType source_type = class_type(source);
 	enum ClassType target_type = class_type(target);
 
-	if (target_type == ClassType_Infered) return treewalk_class(source_ptr);
-	if (source_type != target_type) return 1;
-	
-	if (source_type < ClassType_Pointer) return class_flags(source) != class_flags(dest);
-
 	switch (source_type){
+	case ClassType_Class:
+		if (target_type == ClassType_Infered){
+			assert(
+				*param_index + class_amount(source) < STATIC_PARAMS_MAX_SIZE &&
+				"too complex static parameters"
+			);
+			memcpy(param_buffer+*param_index, source, (1+class_amount(source))*sizeof(ClassNode));
+			*param_index += 1 + class_amount(source);
+		}
+		return target_type != ClassType_Class;
+	
+	case ClassType_GenericEnum:
+	case ClassType_Procedure:
+		return true;
+
 	case ClassType_Pointer:
+		if (target_type != ClassType_Pointer) break;
+		if ((class_flags(target) & ClassFlag_PossiblyConst) != 0){
+			assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+			param_buffer[*param_index] = (class_flags(target) & ClassFlag_Const) != 0;
+			*param_index += 1;
+		} else if ((~class_flags(source) & class_flags(target) & ClassFlag_Const) != 0){
+			return true;
+		}
+		if (class_type(source+1) == ClassType_Void) return false;
+		if (class_type(target+1) == ClassType_Void) return false;
+		return match_classes(param_buffer, param_index, source+1, target+1);
+	
 	case ClassType_Span:
-		if ((class_flags(source) & ~class_flags(target) & ClassFlag_Constant) != 0) return 2;
-		class_setflags(source, class_flags(target));
-		if (source_type == ClassType_Poiner){
-			if (class_type(target-1) == ClassType_Void){
-				*(source-1) = CLASS_VOID:
-				return treewalk_class(source_ptr);
-			}
+		if (target_type != ClassType_Span) break;
+		if ((class_flags(target) & ClassFlag_PossiblyConst) != 0){
+			assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+			param_buffer[*param_index] = (class_flags(target) & ClassFlag_Const) != 0;
+			*param_index += 1;
+		} else if ((~class_flags(source) & class_flags(target) & ClassFlag_Const) != 0){
+			return REG_MISMATCH;
 		}
-		return match_classes(source_ptr, target_ptr);
-	case ClassType_FixedArray:
-		if (class_amount(target) == CLASS_MAX_AMOUNT) return match_classes(source_ptr, target_ptr);
-	case ClassType_FiniteArray:
-		if (class_amount(source) != class_amount(target)) return 3;
-		return match_classes(source_ptr, target_ptr);
-	case ClassType_Tuple:
-	case ClassType_ProcPointer:
-		for (size_t i=0; i!=class_amount(source); i+=1){
-			size_t err = match_classes(source_ptr, target_ptr);
-			if (err != 0) return err; 
+		return match_classes(param_buffer, param_index, source+1, target+1);
+	
+	case ClassType_Buffer:
+		if (target_type != ClassType_Buffer) break;
+		return match_classes(param_buffer, param_index, source+1, target+1);
+	
+	case ClassType_Array:
+		if (target_type != ClassType_Array) break;
+		if (class_amount(target) == CLASS_MAX_AMOUNT){
+			assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+			param_buffer[*param_index] = class_amount(source);
+			*param_index += 1;
+		} else if (class_amount(source) != class_amount(target)) return true;
+		return match_classes(param_buffer, param_index, source+1, target+1);
+	
+	case ClassType_Tuple:{
+		if (source_type != ClassType_Tuple) break;
+		size_t source_size = class_amount(source);
+		if (source_size != class_amount(target) || source_size == 0) return true;
+		for (size_t i=0; i!=source_size; i+=1){
+			if (match_classes(param_buffer, param_index, source+1+i, target+1+i)) return true;
 		}
-		return 0;
-	default: break;
+		return false;
 	}
-	assert(false && "missing case");
+	
+	case ClassType_ProcPointer:{
+		if (
+			target_type == ClassType_Pointer &&
+			(class_flags(target) & ClassFlag_Const) != 0 &&
+			class_type(target+1) == ClassType_Void
+		) return false;
+		if (source_type != ClassType_ProcPointer) break;
+		size_t source_size = class_amount(source);
+		if (source_size != class_amount(target) || source_size == 0) return true;
+		for (size_t i=0; i!=source_size; i+=1){
+			if (match_classes(param_buffer, param_index, source+1+i, target+1+i)) return true;
+		}
+		return false;
+	}
+	
+	default:
+		break;
+	}
+
+	return source->data != target->data;
 }
 
 
@@ -424,7 +465,7 @@ static size_t match_classes(
 static RegId match_argument(
 	IrProcedure *proc,       // ir procedure in which the matching happens
 	uint32_t *param_buffer,  // buffer for static parameters, that is filled when something
-	size_t *param_index,     //   get infered
+	size_t *param_index,     //   gets infered
 	const ClassNode *source, // source class
 	const ClassNode *target, // target class
 	RegId reg_id             // id of register that contains source's value
@@ -436,8 +477,15 @@ static RegId match_argument(
 	switch (source_type){
 	// classes cannot be converted to anything
 	case ClassType_Class:
-		if (target_type != ClassType_Class && target_type != ClassType_Infered) return REG_MISMATCH;
-		return REG_VOID;
+		if (target_type == ClassType_Infered){
+			assert(
+				*param_index + class_amount(source) < STATIC_PARAMS_MAX_SIZE &&
+				"too complex static parameters"
+			);
+			memcpy(param_buffer+*param_index, source, (1+class_amount(source))*sizeof(ClassNode));
+			*param_index += 1 + class_amount(source);
+		}
+		return target_type == ClassType_Class ? REG_VOID : REG_MISMATCH;
 
 	// if target is an enum it's value can be deduced
 	case ClassType_GenericEnum:{
@@ -455,12 +503,12 @@ static RegId match_argument(
 		if (reg_data.type == IT_Data) return ir_add_register(proc, (IrNode){
 			.type      = IT_Data,
 			.data_type = IDT_B8 + class_flags(target),
-			.u64       = reg_data.u64;
+			.u64       = reg_data.u64
 		});
 		return ir_add_register(proc, (IrNode){
 			.type      = IT_Bitcast,
 			.data_type = IDT_B8 + class_flags(target),
-			.unary.arg = reg_id
+			.unary_op.arg = reg_id
 		});
 
 	// can coerct to other integers
@@ -469,17 +517,17 @@ static RegId match_argument(
 		if (class_flags(source) == class_flags(target)) return reg_id;
 		if (reg_data.type == IT_Data){
 			// manual sign extension
-			uint64_t sign_mask = 1ull << ((8ull << (reg_data.data_type - B8)) - 1);
+			uint64_t sign_mask = 1ull << ((8ull << (reg_data.data_type - IDT_B8)) - 1);
 			return ir_add_register(proc, (IrNode){
 				.type      = IT_Data,
 				.data_type = IDT_B8 + class_flags(target),
-				.u64       = reg.u64 | ~(((reg.u64 & sign_mask) << 1) - 1);
+				.u64       = reg_data.u64 | ~(((reg_data.u64 & sign_mask) << 1) - 1)
 			});
 		}
 		return ir_add_register(proc, (IrNode){
 			.type      = class_flags(source) < class_flags(target) ? IT_SignExtend : IT_Bitcast,
 			.data_type = IDT_B8 + class_flags(target),
-			.unary.arg = reg_id
+			.unary_op.arg = reg_id
 		});
 
 	// 64 bit float can coerct to 32 bit float
@@ -488,117 +536,120 @@ static RegId match_argument(
 		if (reg_data.type == IT_Data) return ir_add_register(proc, (IrNode){
 			.type      = IT_Data,
 			.data_type = IDT_F32,
-			.f32       = (float)reg_data.f64;
+			.f32       = (float)reg_data.f64
 		});
 		return ir_add_register(proc, (IrNode){
 			.type      = IT_Convert,
 			.data_type = IDT_F32,
-			.unary.arg = reg_id
+			.unary_op.arg = reg_id
 		});
 	
 	// pointers can coerct to constant pointer and to void pointers
 	case ClassType_Pointer:
 		if (target_type != ClassType_Pointer) break;
 		if ((class_flags(target) & ClassFlag_PossiblyConst) != 0){
-			assert(*param_size != STATIC_PARAM_MAX_SIZE && "too complex static parameters");
-			param_buffer[*param_size] = (class_flags(target) & ClassFlag_Const) != 0;
-			*param_size += 1;
+			assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+			param_buffer[*param_index] = (class_flags(target) & ClassFlag_Const) != 0;
+			*param_index += 1;
 		} else if ((~class_flags(source) & class_flags(target) & ClassFlag_Const) != 0){
 			return REG_MISMATCH;
 		}
 		if (class_type(source+1) == ClassType_Void) return reg_id;
 		if (class_type(target+1) == ClassType_Void) return reg_id;
-		return match_classes(param_buffer, param_size, source+1, target+1) ? REG_MISMATCH : reg_id;
+		return match_classes(param_buffer, param_index, source+1, target+1) ? REG_MISMATCH : reg_id;
 	
 	// spans can coerct to constant spans
 	// additionally static spans can coert to fixed arrays
 	case ClassType_Span:
 		if (reg_data.type == IT_Data && target_type == ClassType_Array){
-			if (match_classes(param_buffer, param_size, source+1, target+1)) return REG_MISMATCH;
+			if (match_classes(param_buffer, param_index, source+1, target+1)) return REG_MISMATCH;
 			if (class_amount(target) == CLASS_MAX_AMOUNT){
-				assert(*param_size != STATIC_PARAM_MAX_SIZE && "too complex static parameters");
-				param_buffer[*param_size] = class_amount(source);
-				*param_size += 1;
-			} else (class_amount(source) != class_amount(target)) return REG_MISMATCH;
+				assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+				param_buffer[*param_index] = class_amount(source);
+				*param_index += 1;
+			} else if (class_amount(source) != class_amount(target)) return REG_MISMATCH;
 			return ir_add_register(proc, (IrNode){
 				.type          = IT_Load,
-				.data_type     = IT_Raw,
+				.data_type     = IDT_Raw,
 				// TODO: handle sizes
-				.load.src_addr = ir_add_registe(proc, (IrNode){
+				.load.src_addr = ir_add_register(proc, (IrNode){
 					.type           = IT_Extract,
 					.data_type      = IDT_B64,
-					.extract.src    = reg_id,
-					.extract.offset = 0
+					.extract.source = reg_id,
+					.extract.index  = 0
 				}),
 				.load.offset   = 0
 			});
 		}
 		if (target_type != ClassType_Span) break;
 		if ((class_flags(target) & ClassFlag_PossiblyConst) != 0){
-			assert(*param_size != STATIC_PARAM_MAX_SIZE && "too complex static parameters");
-			param_buffer[*param_size] = (class_flags(target) & ClassFlag_Const) != 0;
-			*param_size += 1;
+			assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+			param_buffer[*param_index] = (class_flags(target) & ClassFlag_Const) != 0;
+			*param_index += 1;
 		} else if ((~class_flags(source) & class_flags(target) & ClassFlag_Const) != 0){
 			return REG_MISMATCH;
 		}
-		return match_classes(param_buffer, param_size, source+1, target+1) ? REG_MISMATCH : reg_id;
+		return match_classes(param_buffer, param_index, source+1, target+1) ? REG_MISMATCH : reg_id;
 	
-	// buffers also can coerct to constant spans
 	case ClassType_Buffer:{
+		// buffers also can coerct to constant spans
 		if (target_type != ClassType_Span || (class_flags(target) & ClassFlag_Const) == 0) break;
-		if (match_classes(source+1, target+1)) return REG_MISMATCH;
+		if (match_classes(param_buffer, param_index, source+1, target+1)) return REG_MISMATCH;
 		// do the premature optimization
 		if (reg_data.type == IT_Pack && reg_data.size == 3) return ir_add_register(proc, (IrNode){
 			.type            = IT_Pack,
-			.data_type       = IT_Raw,
-			.size            = 2,
+			.data_type       = IDT_Raw,
+			.pack.size       = 2,
 			.pack.sources[0] = reg_data.pack.sources[0],
 			.pack.sources[1] = ir_add_register(proc, (IrNode){
 				.type      = IT_Bitcast,
 				.data_type = IDT_B64,
-				.unary.arg = reg_data.pack.sources[1]
+				.unary_op.arg = reg_data.pack.sources[1]
 			})
 		});
 		return ir_add_register(proc, (IrNode){
 			.type            = IT_Pack,
-			.data_type       = IT_Raw,
-			.size            = 2,
+			.data_type       = IDT_Raw,
+			.pack.size       = 2,
 			.pack.sources[0] = ir_add_register(proc, (IrNode){
 				.type           = IT_Extract,
 				.data_type      = IDT_Ptr,
 				.extract.source = reg_id,
-				.extract.offset = 0
+				.extract.index  = 0
 			}),
 			.pack.sources[1] = ir_add_register(proc, (IrNode){
 				.type      = IT_Bitcast,
 				.data_type = IDT_B64,
-				.unary.arg = ir_add_register(proc, (IrNode){
+				.unary_op.arg = ir_add_register(proc, (IrNode){
 					.type           = IT_Extract,
 					.data_type      = IDT_B32,
 					.extract.source = reg_id,
-					.extract.offset = 8
+					.extract.index  = 8
 				})
 			})
 		});
 	}
 	
-	// arrays can coerct to constant spans and to unsized arrays
+	// arrays can coerct to spans and to unsized arrays
 	case ClassType_Array:{
-		if (target_type == ClassType_Array && class_amount(target) == CLASS_MAX_AMOUNT){
-			assert(*param_size != STATIC_PARAM_MAX_SIZE && "too complex static parameters");
-			param_buffer[*param_size] = class_amount(source);
-			*param_size += 1;
+		if (target_type == ClassType_Array){
+			if (class_amount(target) == CLASS_MAX_AMOUNT){
+				assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+				param_buffer[*param_index] = class_amount(source);
+				*param_index += 1;
+			} else if (class_amount(source) != class_amount(target)) return REG_MISMATCH;
 		}
 		if (target_type != ClassType_Span || (class_flags(target) & ClassFlag_Const) == 0) break;
-		if (match_classes(source+1, target+1) != 0) break;
+		if (match_classes(param_buffer, param_index, source+1, target+1)) break;
 		return ir_add_register(proc, (IrNode){
 			.type      = IT_Pack,
-			.data_type = IT_Raw,
+			.data_type = IDT_Raw,
 			.size      = 2,
 			.pack.sources[0] = ir_add_register(proc, (IrNode){
-				.type      = IT_Push,
-				.data_type = IDT_Ptr,
-				.push      = reg_id
+				.type           = IT_Push,
+				.data_type      = IDT_Ptr,
+				.push.source    = reg_id,
+				.push.alignment = 0 // TODO: calculate correct alignment
 			}),
 			.pack.sources[1] = ir_add_register(proc, (IrNode){
 				.type      = IT_Data,
@@ -618,17 +669,45 @@ static RegId match_argument(
 			return REG_MISMATCH;
 		}
 		switch (target_type){
+		case ClassType_Tuple:{
+			if (source_size != class_amount(target)) return REG_MISMATCH;
+			size_t array_size = 1 + ((source_size-4)*sizeof(RegId)+sizeof(IrNode)-1)/sizeof(IrNode);
+			IrNode buffer[2];
+			IrNode *array_node = buffer;
+			if (array_size > sizeof(buffer)){
+				array_node = malloc(array_size*sizeof(IrNode));
+				if (array_node == NULL) return REG_OOM;
+			}
+			*array_node = (IrNode){
+				.type            = IT_Pack,
+				.data_type       = IDT_Raw,
+				.size            = source_size
+			};
+			for (size_t i=0; i!=source_size; i+=1){
+				RegId arg_reg_id = match_argument(
+					proc,
+					param_buffer, param_index,
+					source+1+i, target+1+i,
+					reg_id
+				);
+				if (arg_reg_id > REG_VOID) return arg_reg_id;
+				array_node->pack.sources[i] = arg_reg_id;
+			}
+			RegId res_reg_id = ir_alloc_register(proc, array_size);
+			memcpy(proc->regs+res_reg_id, array_node, array_size*sizeof(IrNode));
+			if (array_node != buffer) free(array_node);
+			return res_reg_id;
+		}
 		case ClassType_Array:{
 			size_t target_size = class_amount(target);
-			if (target_size == CLASS_MAX_AMOUNT){
-				assert(*param_size != STATIC_PARAM_MAX_SIZE && "too complex static parameters");
-				param_buffer[*param_size] = class_amount(source);
-				*param_size += 1;
+			if (target_size == CLASS_MAX_AMOUNT){ // case when the array size gets infered
+				assert(*param_index != STATIC_PARAMS_MAX_SIZE && "too complex static parameters");
+				param_buffer[*param_index] = class_amount(source);
+				*param_index += 1;
 			} else if (source_size != target_size) return REG_MISMATCH;
-			size_t param_size_copy = *param_size;
 			RegId first_reg = match_argument(
 				proc,
-				param_buffer, param_size,
+				param_buffer, param_index,
 				source+1, target+1,
 				reg_id
 			);
@@ -649,17 +728,20 @@ static RegId match_argument(
 				.pack.sources[0] = first_reg
 			};
 			// match tuple fields agaist the first element's class
+			size_t param_index_copy = *param_index;
 			for (size_t i=1; i!=source_size; i+=1){
-				array_node->pack.sources[i] = match_argument(
+				RegId arg_reg_id = match_argument(
 					proc,
-					param_buffer, &param_size_copy,
+					param_buffer, &param_index_copy,
 					source+1+i, target+1,
 					reg_id
 				);
-				assert(param_size_copy == *param_size && "inference should not be happening in here");
+				assert(param_index_copy == *param_index && "inference should not be happening in here");
+				if (arg_reg_id > REG_VOID) return arg_reg_id;
+				array_node->pack.sources[i] = arg_reg_id;
 			}
 			RegId res_reg_id = ir_alloc_register(proc, array_size);
-			memcpy(proc.regs+res_reg_id, array_node, array_size*sizeof(IrNode));
+			memcpy(proc->regs+res_reg_id, array_node, array_size*sizeof(IrNode));
 			if (array_node != buffer) free(array_node);
 			return res_reg_id;
 		}
@@ -676,6 +758,23 @@ static RegId match_argument(
 		}
 		default: break;
 		}
+		break;
+	}
+
+	// procedure pointers can coert to constant void pointers
+	case ClassType_ProcPointer:{
+		if (
+			target_type == ClassType_Pointer &&
+			(class_flags(target) & ClassFlag_Const) != 0 &&
+			class_type(target+1) == ClassType_Void
+		) return reg_id;
+		if (source_type != target_type) break;
+		size_t source_size = class_amount(source);
+		if (source_size != class_amount(target)) return REG_MISMATCH;
+		for (size_t i=0; i!=source_size; i+=1){
+			if (match_classes(param_buffer, param_index, source+1+i, target+1+i)) return REG_MISMATCH;
+		}
+		return reg_id;
 	}
 	
 	// procedures can be coerted to procedure pointers,
@@ -688,20 +787,29 @@ static RegId match_argument(
 		break;
 	}
 
+	if (target_type == ClassType_Infered){
+		// TODO: traverse source to get its size, and then copy it into param_buffer
+		assert(false && "infered classes are not implemented");
+		return reg_id;
+	}
+
 	// If source was a pointer it would have been handled before.
-	if (target_type == ClassType_Pointer && (class_flags(target) & ClassFlag_Const) != 0){
+	if (target_type == ClassType_Pointer && (class_flags(target) & ClassFlag_Const)!=0){
+		RegId value_id = match_argument(
+			proc,
+			param_buffer, param_index,
+			source, target+1,
+			reg_id
+		);
+		if (value_id >= REG_VOID) return value_id;
 		return ir_add_register(proc, (IrNode){
-			.type      = IT_Push,
-			.data_type = IT_Pointer,
-			.push.src  = match_argument(
-				proc,
-				param_buffer, param_size,
-				source, target+1,
-				reg_id
-			)
+			.type        = IT_Push,
+			.data_type   = IDT_Ptr,
+			.push.source = value_id
 		});
 	}
-	return reg_id;
+
+	return source_type == target_type ? reg_id : REG_MISMATCH;
 }
 
 
@@ -715,14 +823,14 @@ typedef struct{
 
 
 static bool NodeArray_reserve(NodeArray *arr, size_t required_space){
-	assert(arr->size <= arr->capacity);
 	if (arr->capacity < required_space){
-		uint32_t new_capacity = arr->size!=0 ? 2*arr->capacity : 64;
-		Node *new_ptr = realloc(arr->ptr, new_capacity*sizeof(Node));
+		size_t double_cap = 2 * arr->capacity;
+		size_t new_cap = double_cap>required_space ? double_cap : required_space;
+		Node *new_ptr = realloc(arr->ptr, new_cap*sizeof(Node));
 		//if (new_ptr == NULL) return true;
 		assert(new_ptr != NULL);
 		arr->ptr = new_ptr;
-		arr->capacity = new_capacity;
+		arr->capacity = new_cap;
 	}
 	return false;
 }
@@ -730,7 +838,7 @@ static bool NodeArray_reserve(NodeArray *arr, size_t required_space){
 static Node *NodeArray_push(NodeArray *arr){
 	assert(arr->size <= arr->capacity);
 	if (arr->size == arr->capacity){
-		uint32_t new_capacity = arr->size!=0 ? 2*arr->capacity : 64;
+		size_t new_capacity = arr->size!=0 ? 2*arr->capacity : 64;
 		Node *new_ptr = realloc(arr->ptr, new_capacity*sizeof(Node));
 		//if (new_ptr == NULL) return NULL;
 		assert(new_ptr != NULL);
@@ -746,7 +854,7 @@ static Node *NodeArray_push(NodeArray *arr){
 // VARIABLE STACK 
 
 typedef struct VariableStack{
-	ClassId *classes; // it also stores the metadata
+	//ClassId *classes; // it also stores the metadata
 	Value *values;
 	uint32_t size;
 	uint32_t capacity;
